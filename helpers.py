@@ -53,12 +53,33 @@ def read_tiff(path): # returns tiff image stack as np array
 
 
 def apply_contrast(npslice, f):
-    minval = np.percentile(npslice, f) # vary threshold between 1st and 99th percentiles, when f=1
-    maxval = np.percentile(npslice, 100-f)
+    #minval = np.percentile(npslice, f) # vary threshold between 1st and 99th percentiles, when f=1
+    minval=0#the lowest value will always be zero
+    maxval = np.percentile(npslice, 101-f)#was 100-f is now 101-f
     result = np.clip(npslice, minval, maxval)
-    result = ((result - minval) / (maxval - minval)) * 1024
+    #print(npslice[0][20])
+    if np.any(result)==True:
+        result = ((result - minval) / (maxval - minval)) * 1024
     return (result).astype(np.short)
 
 
 def apply_brightness(npslice, f):
     return (npslice*f).astype(np.short)
+
+def extract_max_value(nparray): #insert 3d arrays
+    max_value_array=np.zeros_like(nparray[0])
+    for i in nparray:
+        j=0
+        while j < len(i):
+            k=0
+            while k < len(i[0]):
+                if i[j][k]>max_value_array[j][k]:
+                    max_value_array[j][k]=i[j][k]
+                k+=1
+            j+=1
+
+    return max_value_array
+
+#test_array=[[[1,2,3],[4,5,6]],[[10,-2,-3],[-4,50,-6]],[[-11,-21,-31],[-41,-51,61]]]
+#test_array=np.array(test_array)
+#extract_max_value(test_array)

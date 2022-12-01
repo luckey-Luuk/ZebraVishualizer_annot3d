@@ -17,7 +17,7 @@ from AnnotationSpace3D import AnnotationSpace3D
 import random
 import sys
 import matplotlib.pyplot as plt
-from helpers import read_tiff, apply_contrast, apply_brightness, disk
+from helpers import read_tiff, apply_contrast, apply_brightness, disk, extract_max_value
 import asyncio
 
 
@@ -71,7 +71,8 @@ class Visualization(HasTraits):
         npimages = annot3D.get_npimages()
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
-        bg_original = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages))
+        bg_original = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         # self.scene.scene.disable_render = False
 
@@ -286,6 +287,7 @@ class MainWindow(QMainWindow):
         }
 
         self.dims = (w, h, d)
+        print(self.dims)
 
         self.num_slides = self.plane_depth[p]
 
@@ -300,7 +302,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         
     # INIT ANNOT LOAD UP
-        self.load_source_file('data/src.tiff')
+        #self.load_source_file('data/src.tiff')
+        self.load_source_file('data/test2.tif')
 
         if len(sys.argv) == 2:
             global annot3D
@@ -754,9 +757,13 @@ class MainWindow(QMainWindow):
             if (p == 'xy'):
                 np_slice = self.npimages[cs]
             elif (p == 'xz'):
-                np_slice = np.swapaxes(self.npimages, 0, 1)[cs]
+                #np_slice = np.swapaxes(self.npimages, 0, 1)[cs]
+                np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 1))
+                print('done')
             elif (p == 'yz'):
-                np_slice = np.swapaxes(self.npimages, 0, 2)[cs]
+                #np_slice = np.swapaxes(self.npimages, 0, 2)[cs]
+                np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 2))
+                print('done2')
 
             np_slice = apply_contrast(np_slice, global_contrast)
             np_slice = apply_brightness(np_slice, global_brightness)
