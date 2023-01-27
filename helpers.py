@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 
 # from skimage draw
@@ -39,7 +39,15 @@ def read_tiff(path): # returns tiff image stack as np array
 
     for i in range(img.n_frames): #x-y plane
         img.seek(i)  
-        xy.append(np.array(img))
+        
+        new_img=img.convert('L')
+        contrast=ImageEnhance.Contrast(new_img)
+        contrast_img=contrast.enhance(5)
+        contrast_img=contrast_img.filter(ImageFilter.MedianFilter(size=3))
+        contrast_img=contrast_img.filter(ImageFilter.GaussianBlur(radius=2))
+
+        xy.append(np.array(contrast_img)) #check if this works
+        #xy.append(np.array(img))
 
     xy = np.array(xy)
 

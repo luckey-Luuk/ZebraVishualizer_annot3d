@@ -39,7 +39,7 @@ eraser_on = False
 brush_size = 5
 eraser_size = 5
 global_contrast = 1
-global_brightness = 15
+global_brightness = 20
 global_annot_opacity = 0.8
 global_zoom = 0.0
 
@@ -69,12 +69,28 @@ class Visualization(HasTraits):
     def update_plot(self):
         global annot3D
         npimages = annot3D.get_npimages()
+        print(npimages)
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
-        bg_original = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        #test_point =mlab.points3d([0,0],[250,0],[250,0],color=(1,0,0),scale_factor=10,name='moving dot')
+        self.dot=mlab.points3d([0],[250-random.randrange(-10,10)],[250-random.randrange(-10,10)],color=(1,0,0),scale_factor=10,name='moving dot')
         #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
+        self.scene.background = (0.1, 0.1, 0.1)  
+        #print('test')
         # self.scene.scene.disable_render = False
+
+    def update_point(self):
+        self.dot.remove()
+        self.dot=mlab.points3d([0],[250-random.randrange(-30,30)],[250-random.randrange(-30,30)],color=(1,0,0),scale_factor=10,name='moving dot')
+
+    def update_volume(self):
+        window.load_source_file('data/test2.tif')
+        npimages = annot3D.get_npimages()
+        self.volume.remove()
+        #print(npimages)
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
 
 
     def update_annot(self): # update the scalar field and visualization auto updates
@@ -272,6 +288,9 @@ class MainWindow(QMainWindow):
         global COLORS, p, current_slide, annot3D
 
         self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
+
+
+
         self.npimages = self.slides['xy']
         
         w = self.npimages[0].shape[0]
@@ -303,7 +322,8 @@ class MainWindow(QMainWindow):
         
     # INIT ANNOT LOAD UP
         #self.load_source_file('data/src.tiff')
-        self.load_source_file('data/test2.tif')
+        self.load_source_file('data/test.tif')
+        #self.load_source_file('data/test2.tif')
 
         if len(sys.argv) == 2:
             global annot3D
@@ -643,6 +663,7 @@ class MainWindow(QMainWindow):
 
 
     def change_eraser_size(self):
+        window.mayavi_widget.visualization.update_volume()
         global eraser_size 
         eraser_size = self.eraser_size_slider.value()
         self.update_canvas_cursors()
@@ -657,6 +678,10 @@ class MainWindow(QMainWindow):
 
 
     def change_brightness(self):
+        window.mayavi_widget.visualization.update_point()
+        #MainWindow.mayavi_widget.visualization.update_plot()
+        #MayaviQWidget.visualization.update_plot()
+        #mayavi_widget.visualization.update_plot()
         global global_brightness
         global_brightness = self.brightness_slider.value()
         self.change_gfilter()
@@ -748,6 +773,8 @@ class MainWindow(QMainWindow):
 
     def change_gfilter(self):
         global slides, current_slide, npimages, global_contrast, global_brightness
+        global xz_slice 
+        global yz_slide
 
         for p in ['xy','xz','yz']:
             # new np slices produced from filter effects
@@ -758,11 +785,22 @@ class MainWindow(QMainWindow):
                 np_slice = self.npimages[cs]
             elif (p == 'xz'):
                 #np_slice = np.swapaxes(self.npimages, 0, 1)[cs]
-                np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 1))
+                try:
+                    np_slice=xz_slice
+                except:
+                    np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 1))
+                    
+                    xz_slice= np_slice
                 print('done')
             elif (p == 'yz'):
                 #np_slice = np.swapaxes(self.npimages, 0, 2)[cs]
-                np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 2))
+                try:
+                    np_slice=yz_slide
+                except:
+                    np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 2))
+                    
+                    yz_slide=np_slice
+                
                 print('done2')
 
             np_slice = apply_contrast(np_slice, global_contrast)
