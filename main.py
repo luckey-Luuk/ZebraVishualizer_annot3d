@@ -9,7 +9,7 @@ from traitsui.api import View, Item
 from mayavi.core.ui.api import MayaviScene, MlabSceneModel, SceneEditor
 from mayavi import mlab
 
-
+import mayavi
 import numpy as np
 import os
 from PIL import Image, ImageQt
@@ -17,7 +17,7 @@ from AnnotationSpace3D import AnnotationSpace3D
 import random
 import sys
 import matplotlib.pyplot as plt
-from helpers import read_tiff, apply_contrast, apply_brightness, disk, extract_max_value
+from helpers import read_tiff, apply_contrast, apply_brightness, disk, extract_max_value, create_image_dict
 import asyncio
 
 
@@ -66,31 +66,66 @@ class Visualization(HasTraits):
     scene = Instance(MlabSceneModel, ())
 
     @on_trait_change('scene.activated')
+    
+
     def update_plot(self):
+
+        self.image_dictionary=create_image_dict()
+        self.current_image_number=0
+
+        self.figure = mlab.gcf(engine=self.scene.engine)#geen clou wat dit exact doet
+
         global annot3D
         npimages = annot3D.get_npimages()
-        print(npimages)
+        #print(npimages)
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+
+        #self.volume.on_mouse_pick(picker_callback)
+        #self.scene.on_mouse_pick(picker_callback)
+        #self.volume.on_mouse_pick(picker_callback)
+        self.figure.on_mouse_pick(self.picker_callback)
+
         #test_point =mlab.points3d([0,0],[250,0],[250,0],color=(1,0,0),scale_factor=10,name='moving dot')
         self.dot=mlab.points3d([0],[250-random.randrange(-10,10)],[250-random.randrange(-10,10)],color=(1,0,0),scale_factor=10,name='moving dot')
         #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
         #print('test')
-        # self.scene.scene.disable_render = False
+         #self.scene.scene.disable_render = False
 
-    def update_point(self):
+    def update_point(self,cordinate='random'):
         self.dot.remove()
-        self.dot=mlab.points3d([0],[250-random.randrange(-30,30)],[250-random.randrange(-30,30)],color=(1,0,0),scale_factor=10,name='moving dot')
+        if cordinate =="random":
+            self.dot=mlab.points3d([0],[250-random.randrange(-30,30)],[250-random.randrange(-30,30)],color=(1,0,0),scale_factor=10,name='moving dot')
+        else:
+            self.dot=mlab.points3d([cordinate[0]],[cordinate[1]],[cordinate[2]],color=(1,0,0),scale_factor=10,name='moving dot')
 
-    def update_volume(self):
-        window.load_source_file('data/test2.tif')
+    def update_volume(self,next_or_previous='next'):
+        if next_or_previous=="next":
+            if self.current_image_number==len(self.image_dictionary)-1:
+                return
+            self.current_image_number+=1
+        elif next_or_previous=="previous":
+            if self.current_image_number==0:
+                return
+            self.current_image_number-=1
+        window.load_source_file('data/'+self.image_dictionary[self.current_image_number])
+        #window.load_source_file('data/test2.tif')
         npimages = annot3D.get_npimages()
         self.volume.remove()
-        #print(npimages)
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+
+    def picker_callback(self,picker):
+        #print(type(picker))
+        #print(picker.picked_positions)
+        #print(picker.pick_position)
+        #print(type(picker.pick_position))
+        #print(dir(picker))
+        self.update_point(picker.pick_position)
+
+    
 
 
     def update_annot(self): # update the scalar field and visualization auto updates
@@ -306,7 +341,7 @@ class MainWindow(QMainWindow):
         }
 
         self.dims = (w, h, d)
-        print(self.dims)
+        #print(self.dims)
 
         self.num_slides = self.plane_depth[p]
 

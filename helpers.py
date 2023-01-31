@@ -1,5 +1,6 @@
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
+import os
 
 # from skimage draw
 def disk(center, radius, *, shape=None):
@@ -88,6 +89,20 @@ def extract_max_value(nparray): #insert 3d arrays
 
     return max_value_array
 
+def create_image_dict(directory="data"):#returns dictonary of image file names
+    file_list=[]
+    for file in os.listdir(directory):
+        if file.endswith('.tif'):
+            if '++' in file:
+                file_list.append(file)
+    
+    file_list=sorted(file_list)
+    file_dict={}
+    for i in range(len(file_list)):
+        file_dict[i]=file_list[i]
+    return file_dict
+
+#print(create_image_dict())
 #test_array=[[[1,2,3],[4,5,6]],[[10,-2,-3],[-4,50,-6]],[[-11,-21,-31],[-41,-51,61]]]
 #test_array=np.array(test_array)
 #extract_max_value(test_array)
