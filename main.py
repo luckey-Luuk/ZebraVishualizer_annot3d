@@ -73,7 +73,7 @@ class Visualization(HasTraits):
         self.image_dictionary=create_image_dict()
         self.current_image_number=0
 
-        self.figure = mlab.gcf(engine=self.scene.engine)#geen clou wat dit exact doet
+        self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
         global annot3D
         npimages = annot3D.get_npimages()
@@ -82,9 +82,6 @@ class Visualization(HasTraits):
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
 
-        #self.volume.on_mouse_pick(picker_callback)
-        #self.scene.on_mouse_pick(picker_callback)
-        #self.volume.on_mouse_pick(picker_callback)
         self.figure.on_mouse_pick(self.picker_callback)
 
         #test_point =mlab.points3d([0,0],[250,0],[250,0],color=(1,0,0),scale_factor=10,name='moving dot')
@@ -111,6 +108,11 @@ class Visualization(HasTraits):
             if self.current_image_number==0:
                 return
             self.current_image_number-=1
+        elif isinstance(next_or_previous,int):
+            if len(self.image_dictionary)-1<next_or_previous:
+                self.current_image_number=len(self.image_dictionary)-1
+            else:
+                self.current_image_number=next_or_previous
         window.load_source_file('data/'+self.image_dictionary[self.current_image_number])
         #window.load_source_file('data/test2.tif')
         npimages = annot3D.get_npimages()
@@ -118,10 +120,6 @@ class Visualization(HasTraits):
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
 
     def picker_callback(self,picker):
-        #print(type(picker))
-        #print(picker.picked_positions)
-        #print(picker.pick_position)
-        #print(type(picker.pick_position))
         #print(dir(picker))
         self.update_point(picker.pick_position)
 
@@ -501,6 +499,16 @@ class MainWindow(QMainWindow):
         gotoAction.setShortcut(QKeySequence.Find)
         gotoAction.setStatusTip('Go to specific slide on selected plane')
         gotoAction.triggered.connect(self.goto_slide)
+
+        ChangeVolumeNextAction = QAction('>', self)
+        ChangeVolumeNextAction.setShortcut(QKeySequence.Find)
+        ChangeVolumeNextAction.setStatusTip('Go to another volume rendering')
+        ChangeVolumeNextAction.triggered.connect(self.change_volume_model_next)
+
+        ChangeVolumePreviusAction = QAction('<', self)
+        ChangeVolumePreviusAction.setShortcut(QKeySequence.Find)
+        ChangeVolumePreviusAction.setStatusTip('Go to another volume rendering')
+        ChangeVolumePreviusAction.triggered.connect(self.change_volume_model_previous)
         
 
     # HIDDEN HOTKEY ACTIONS
@@ -554,7 +562,7 @@ class MainWindow(QMainWindow):
 
     # adding toolbar actions
         self.toolbar = self.addToolBar('Main')
-        self.toolbar.addActions([self.xyAction, self.xzAction, self.yzAction, gotoAction, selectEraserAction])
+        self.toolbar.addActions([self.xyAction, self.xzAction, self.yzAction, gotoAction, selectEraserAction,ChangeVolumePreviusAction,ChangeVolumeNextAction])
 
 
 
@@ -698,7 +706,7 @@ class MainWindow(QMainWindow):
 
 
     def change_eraser_size(self):
-        window.mayavi_widget.visualization.update_volume()
+        #window.mayavi_widget.visualization.update_volume()
         global eraser_size 
         eraser_size = self.eraser_size_slider.value()
         self.update_canvas_cursors()
@@ -861,6 +869,12 @@ class MainWindow(QMainWindow):
         self.c['xy'].set_pen_color(c)
         self.c['xz'].set_pen_color(c)
         self.c['yz'].set_pen_color(c)
+
+    def change_volume_model_next(self):
+        window.mayavi_widget.visualization.update_volume('next')
+
+    def change_volume_model_previous(self):
+        window.mayavi_widget.visualization.update_volume('previous')
 
 
         

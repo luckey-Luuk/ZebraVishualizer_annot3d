@@ -1,1 +1,1 @@
-read
+self.c
