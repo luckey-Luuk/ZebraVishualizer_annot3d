@@ -1,6 +1,6 @@
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QCoreApplication, QEvent, QSize, QMetaObject, Qt, SLOT, Slot
-from PySide2.QtGui import QBitmap, QColor, QCursor, QIcon, QImage, QKeySequence, QPainter, QPalette, QPixmap, QResizeEvent
+from PySide2.QtGui import QBitmap, QColor, QCursor, QIcon, QImage, QKeySequence, QPainter, QPalette, QPixmap, QResizeEvent, QColor
 from PySide2.QtWidgets import QApplication, QCheckBox, QComboBox, QDateEdit, QDateTimeEdit, QDial, QDockWidget, QDoubleSpinBox, QFileDialog, QFontComboBox, QGraphicsGridLayout, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLCDNumber, QLabel, QLineEdit, QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStatusBar, QTimeEdit, QToolBar, QGridLayout, QVBoxLayout, QWidget, QAction, QShortcut
 
 
@@ -72,6 +72,15 @@ class Visualization(HasTraits):
 
         self.image_dictionary=create_image_dict()
         self.current_image_number=0
+        self.current_point_index=0
+
+        self.amount_of_points=20
+        self.point_locations=[list([0]*self.amount_of_points),list([250]*self.amount_of_points),list([250]*self.amount_of_points)]
+
+        self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
+
+        self.mayavi_dots=[None for i in range(self.amount_of_points)]#location for mayavi to store individual dots
+
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
@@ -85,19 +94,26 @@ class Visualization(HasTraits):
         self.figure.on_mouse_pick(self.picker_callback)
 
         #test_point =mlab.points3d([0,0],[250,0],[250,0],color=(1,0,0),scale_factor=10,name='moving dot')
-        self.dot=mlab.points3d([0],[250-random.randrange(-10,10)],[250-random.randrange(-10,10)],color=(1,0,0),scale_factor=10,name='moving dot')
+        self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
         #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
         #print('test')
          #self.scene.scene.disable_render = False
 
-    def update_point(self,cordinate='random'):
+    def update_point(self,cordinate):
         self.dot.remove()
-        if cordinate =="random":
-            self.dot=mlab.points3d([0],[250-random.randrange(-30,30)],[250-random.randrange(-30,30)],color=(1,0,0),scale_factor=10,name='moving dot')
-        else:
-            self.dot=mlab.points3d([cordinate[0]],[cordinate[1]],[cordinate[2]],color=(1,0,0),scale_factor=10,name='moving dot')
+
+        self.point_locations[0][self.current_point_index]=cordinate[0]
+        self.point_locations[1][self.current_point_index]=cordinate[1]
+        self.point_locations[2][self.current_point_index]=cordinate[2]
+        self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
+        return
+    
+    def determine_new_point(self,cordinate_update):
+        new_cordinates=[self.point_locations[0][self.current_point_index]+cordinate_update[0],self.point_locations[1][self.current_point_index]+cordinate_update[1],self.point_locations[2][self.current_point_index]+cordinate_update[2]]
+        self.update_point(new_cordinates)
+        return
 
     def update_volume(self,next_or_previous='next'):
         if next_or_previous=="next":
@@ -363,10 +379,9 @@ class MainWindow(QMainWindow):
             print("Set server URL to", sys.argv[1])
             annot3D.set_server_url(sys.argv[1])
 
-        for p in ['xy', 'xz', 'yz']:
-            self.c[p] = Canvas(image=self.slides[p][0], plane=p)
+        #for p in ['xy', 'xz', 'yz']:
+        #    self.c[p] = Canvas(image=self.slides[p][0], plane=p)
             
-        self.change_gfilter()
 
         w = QWidget()
         
@@ -390,9 +405,87 @@ class MainWindow(QMainWindow):
 
     # CANVAS LAYOUT
         canvas_layout = QGridLayout()
-        self.slide_label = QLabel('xy: 1')
-        self.slide_label.setFixedWidth(40)
-        canvas_layout.addWidget(self.slide_label,1,1)
+        #self.slide_label = QLabel('xy: 1')
+        #self.slide_label.setFixedWidth(40)
+        #canvas_layout.addWidget(self.slide_label,0,1)
+
+
+    # TOOLBAR, STATUSBAR, MENU
+        self.setup_bar_actions()
+
+    # SLIDERS
+        self.setup_sliders()
+
+    # MAYAVI RENDER VIEW
+        self.rdock = QDockWidget("Render View", self) # render dock
+        self.rdock.setFeatures(self.rdock.features() & ~QDockWidget.DockWidgetClosable) # unclosable
+        self.rdock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        container = QWidget(self.rdock)
+        self.mayavi_widget = MayaviQWidget(container)
+        self.rdock.setWidget(self.mayavi_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
+    
+    # GENERAL WINDOW PROPS
+        self.setWindowTitle("Annotation Toolbox 3D")
+        self.setCentralWidget(w)
+
+
+        def print_test(name):
+            print(name)
+
+        def create_button(self,text,width,update=[0,0,0]): #function to create standard button
+            self.button=QPushButton(text)
+            self.button.setFixedWidth(width)
+            self.button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point(update))
+            return self.button
+
+        self.test_button=QPushButton('test')
+        self.test_button.setFixedWidth(50)
+        self.test_button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point([0,0,5]))
+        #self.test_button.clicked.connect(self.mayavi_widget.visualization.update_point())
+        canvas_layout.addWidget(self.test_button,3,0)
+
+        self.x_label = QLabel('X')
+        self.y_label = QLabel('Y')
+        self.z_label = QLabel('Z')
+        canvas_layout.addWidget(self.x_label,0,0)
+        canvas_layout.addWidget(self.y_label,1,0)
+        canvas_layout.addWidget(self.z_label,2,0)
+
+        canvas_layout.addWidget(create_button(self,'-5',50,[-5,0,0]),0,1) #create x-5 button
+        canvas_layout.addWidget(create_button(self,'-1',50,[-1,0,0]),0,2) #create x-1 button
+        canvas_layout.addWidget(create_button(self,'+1',50,[1,0,0]),0,3) #create x+1 button
+        canvas_layout.addWidget(create_button(self,'+5',50,[5,0,0]),0,4) #create x+5 button
+
+        canvas_layout.addWidget(create_button(self,'-5',50,[0,-5,0]),1,1) #create y-5 button
+        canvas_layout.addWidget(create_button(self,'-1',50,[0,-1,0]),1,2) #create y-1 button
+        canvas_layout.addWidget(create_button(self,'+1',50,[0,1,0]),1,3) #create y+1 button
+        canvas_layout.addWidget(create_button(self,'+5',50,[0,5,0]),1,4) #create y+5 button
+
+        canvas_layout.addWidget(create_button(self,'-5',50,[0,0,-5]),2,1) #create z-5 button
+        canvas_layout.addWidget(create_button(self,'-1',50,[0,0,-1]),2,2) #create z-1 button
+        canvas_layout.addWidget(create_button(self,'+1',50,[0,0,1]),2,3) #create z+1 button
+        canvas_layout.addWidget(create_button(self,'+5',50,[0,0,5]),2,4) #create z+5 button
+
+        def change_selected_point(new_point):
+            new_point=new_point.split(" ")[1] #split the string and take the number
+            self.mayavi_widget.visualization.current_point_index=int(new_point)
+
+        point_amount=20 #amount of points in pointlist
+        point_list=[]   #list for the selectable points in the combobox
+        for i in range(point_amount):
+            point_list.append("point "+str(i+1))
+
+        selection_box=QComboBox()
+        selection_box.addItems(point_list)
+        
+        selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
+        
+        #selection_box.setFixedWidth(50)
+        #v_box.addWidget(selection_box)
+        canvas_layout.addWidget(selection_box,4,0)
+        
+
 
         # self.scrollAreaXY = QScrollArea()
         # self.scrollAreaXY.setWidget(self.c['xy'])
@@ -413,29 +506,16 @@ class MainWindow(QMainWindow):
         # canvas_layout.addWidget(self.scrollAreaXZ,1,2, stretch=0)
         # canvas_layout.addWidget(self.scrollAreaYZ,2,1, stretch=0)
 
-        canvas_layout.addWidget(self.c['xy'],2,2)
-        canvas_layout.addWidget(self.c['xz'],1,2)
-        canvas_layout.addWidget(self.c['yz'],2,1)
+        #canvas_layout.addWidget(self.c['xy'],2,2)
+        #canvas_layout.addWidget(self.c['xz'],1,2)
+        #canvas_layout.addWidget(self.c['yz'],2,1)
+
+        #canvas_layout.addWidget(QColor("red"),2,2)
         l.addLayout(canvas_layout)
 
-    # TOOLBAR, STATUSBAR, MENU
-        self.setup_bar_actions()
+        
 
-    # SLIDERS
-        self.setup_sliders()
-
-    # MAYAVI RENDER VIEW
-        self.rdock = QDockWidget("Render View", self) # render dock
-        self.rdock.setFeatures(self.rdock.features() & ~QDockWidget.DockWidgetClosable) # unclosable
-        self.rdock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        container = QWidget(self.rdock)
-        self.mayavi_widget = MayaviQWidget(container)
-        self.rdock.setWidget(self.mayavi_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
     
-    # GENERAL WINDOW PROPS
-        self.setWindowTitle("Annotation Toolbox 3D")
-        self.setCentralWidget(w)
 
 
     def setup_bar_actions(self):
@@ -667,16 +747,10 @@ class MainWindow(QMainWindow):
         cs, ok = QInputDialog.getText(self, "Go to slide", "Go to slide on plane "+p)
         if ok and cs.isnumeric(): # current slide cs must be a number
             cs = int(cs)-1
-            if cs < 0 or cs >= self.plane_depth[p]: # slide out of range
+            if cs < 0: # slide out of range
                 return
+        window.mayavi_widget.visualization.update_volume(cs)
 
-            current_slide[p] = cs
-            self.slide_label.setText(p + ': ' + str(cs+1))
-
-            self.c[p].change_bg(self.slides[p][cs])
-            self.c[p].change_annot(annot3D.get_slice(p, cs))
-
-            self.change_gfilter()
 
 
     def update_canvas_cursors(self):
@@ -688,9 +762,8 @@ class MainWindow(QMainWindow):
     def change_zoom(self):
         global global_zoom, annot3D
         global_zoom = self.zoom_slider.value()
-        self.change_gfilter()
-        for p in ['xy', 'xz', 'yz']:
-            self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
+        #for p in ['xy', 'xz', 'yz']:
+        #    self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
 
 
     def toggle_eraser(self):
@@ -727,13 +800,12 @@ class MainWindow(QMainWindow):
         #mayavi_widget.visualization.update_plot()
         global global_brightness
         global_brightness = self.brightness_slider.value()
-        self.change_gfilter()
+
 
 
     def change_contrast(self):
         global global_contrast
         global_contrast = self.contrast_slider.value()
-        self.change_gfilter()
     
 
     def switch_plane(self, plane):
@@ -810,46 +882,6 @@ class MainWindow(QMainWindow):
 
         self.c[p].change_bg(self.slides[p][cs])
         self.c[p].change_annot(annot3D.get_slice(p, cs))
-
-        self.change_gfilter()
-
-
-    def change_gfilter(self):
-        global slides, current_slide, npimages, global_contrast, global_brightness
-        global xz_slice 
-        global yz_slide
-
-        for p in ['xy','xz','yz']:
-            # new np slices produced from filter effects
-            np_slice = None
-            cs = current_slide[p]
-            
-            if (p == 'xy'):
-                np_slice = self.npimages[cs]
-            elif (p == 'xz'):
-                #np_slice = np.swapaxes(self.npimages, 0, 1)[cs]
-                try:
-                    np_slice=xz_slice
-                except:
-                    np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 1))
-                    
-                    xz_slice= np_slice
-                print('done')
-            elif (p == 'yz'):
-                #np_slice = np.swapaxes(self.npimages, 0, 2)[cs]
-                try:
-                    np_slice=yz_slide
-                except:
-                    np_slice = extract_max_value(np.swapaxes(self.npimages, 0, 2))
-                    
-                    yz_slide=np_slice
-                
-                print('done2')
-
-            np_slice = apply_contrast(np_slice, global_contrast)
-            np_slice = apply_brightness(np_slice, global_brightness)
-            
-            self.c[p].change_bg(np_slice)
 
 
     def clear(self):
