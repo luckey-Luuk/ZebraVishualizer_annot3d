@@ -93,13 +93,44 @@ class Visualization(HasTraits):
 
         self.figure.on_mouse_pick(self.picker_callback)
 
-        #test_point =mlab.points3d([0,0],[250,0],[250,0],color=(1,0,0),scale_factor=10,name='moving dot')
-        self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
+        #self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
+
         #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
         #print('test')
          #self.scene.scene.disable_render = False
+
+    def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
+        #update point data
+        self.point_location_data[self.current_image_number][self.current_point_index]=[new_x,new_y,new_z]
+        #draw new point
+        if self.mayavi_dots[self.current_point_index] is not None:
+            self.mayavi_dots[self.current_point_index].remove()
+            self.mayavi_dots[self.current_point_index]=None
+        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=(1,0,0),scale_factor=10)
+
+    def delete_point(self):
+        #update point data
+        self.point_location_data[self.current_image_number][self.current_point_index]=[None,None,None]
+        #delete point
+        if self.mayavi_dots[self.current_point_index] is not None:
+            self.mayavi_dots[self.current_point_index].remove()
+            self.mayavi_dots[self.current_point_index]=None
+
+    def redraw_all_points(self): #redraws all points, used to update points for the next timestep
+        for i in range(self.amount_of_points):
+            if self.mayavi_dots[i] is not None:
+                self.mayavi_dots[i].remove()
+                self.mayavi_dots[i]=None
+
+            if self.point_location_data[self.current_image_number][i][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
+                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=(1,0,0),scale_factor=10)
+
+    def add_value_to_point(self,added_value):
+        old_value=self.point_location_data[self.current_image_number][self.current_point_index]
+        if old_value[0] is not None:#check if value exists 
+            self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
     def update_point(self,cordinate):
         self.dot.remove()
@@ -130,14 +161,19 @@ class Visualization(HasTraits):
             else:
                 self.current_image_number=next_or_previous
         window.load_source_file('data/'+self.image_dictionary[self.current_image_number])
-        #window.load_source_file('data/test2.tif')
         npimages = annot3D.get_npimages()
         self.volume.remove()
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        self.redraw_all_points()
 
     def picker_callback(self,picker):
         #print(dir(picker))
-        self.update_point(picker.pick_position)
+        #self.update_point(picker.pick_position)
+        cordinates=picker.pick_position
+        self.draw_point(cordinates[0],cordinates[1],cordinates[2])
+
+    def save_data(self,file_name="test"):
+        return file_name
 
     
 
@@ -436,13 +472,13 @@ class MainWindow(QMainWindow):
         def create_button(self,text,width,update=[0,0,0]): #function to create standard button
             self.button=QPushButton(text)
             self.button.setFixedWidth(width)
-            self.button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point(update))
+            self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
+            #self.button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point(update))
             return self.button
 
-        self.test_button=QPushButton('test')
-        self.test_button.setFixedWidth(50)
-        self.test_button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point([0,0,5]))
-        #self.test_button.clicked.connect(self.mayavi_widget.visualization.update_point())
+        self.test_button=QPushButton('delete point')
+        self.test_button.setFixedWidth(70)
+        self.test_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
         canvas_layout.addWidget(self.test_button,3,0)
 
         self.x_label = QLabel('X')
@@ -794,10 +830,6 @@ class MainWindow(QMainWindow):
 
 
     def change_brightness(self):
-        window.mayavi_widget.visualization.update_point()
-        #MainWindow.mayavi_widget.visualization.update_plot()
-        #MayaviQWidget.visualization.update_plot()
-        #mayavi_widget.visualization.update_plot()
         global global_brightness
         global_brightness = self.brightness_slider.value()
 
