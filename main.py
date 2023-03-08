@@ -19,6 +19,7 @@ import sys
 import matplotlib.pyplot as plt
 from helpers import read_tiff, apply_contrast, apply_brightness, disk, extract_max_value, create_image_dict
 import asyncio
+from openpyxl import Workbook, load_workbook
 
 
 COLORS = {
@@ -75,8 +76,7 @@ class Visualization(HasTraits):
         self.current_point_index=0
 
         self.amount_of_points=20
-        self.point_locations=[list([0]*self.amount_of_points),list([250]*self.amount_of_points),list([250]*self.amount_of_points)]
-
+        self.colour_array=[(1,0,0),(1,1,0),(0,0,1),(0.95,0.5,0.2),(0.55,0.1,0.7),(0.3,1,1),(1,0.75,0.8),(0.65,0.4,0.15),(1,1,0.8),(0.5,0,0),(0.65,1,0.75),(0.5,0.5,0),(1,1,1),(0.05,0.05,0.05),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0)]
         self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
 
         self.mayavi_dots=[None for i in range(self.amount_of_points)]#location for mayavi to store individual dots
@@ -93,7 +93,6 @@ class Visualization(HasTraits):
 
         self.figure.on_mouse_pick(self.picker_callback)
 
-        #self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
 
         #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
@@ -108,7 +107,7 @@ class Visualization(HasTraits):
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
-        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=(1,0,0),scale_factor=10)
+        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=10)
 
     def delete_point(self):
         #update point data
@@ -125,26 +124,14 @@ class Visualization(HasTraits):
                 self.mayavi_dots[i]=None
 
             if self.point_location_data[self.current_image_number][i][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=(1,0,0),scale_factor=10)
+                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=self.colour_array[i],scale_factor=10)
 
     def add_value_to_point(self,added_value):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
         if old_value[0] is not None:#check if value exists 
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
-    def update_point(self,cordinate):
-        self.dot.remove()
-
-        self.point_locations[0][self.current_point_index]=cordinate[0]
-        self.point_locations[1][self.current_point_index]=cordinate[1]
-        self.point_locations[2][self.current_point_index]=cordinate[2]
-        self.dot=mlab.points3d(self.point_locations[0],self.point_locations[1],self.point_locations[2],color=(1,0,0),scale_factor=10,name='moving dot')
-        return
     
-    def determine_new_point(self,cordinate_update):
-        new_cordinates=[self.point_locations[0][self.current_point_index]+cordinate_update[0],self.point_locations[1][self.current_point_index]+cordinate_update[1],self.point_locations[2][self.current_point_index]+cordinate_update[2]]
-        self.update_point(new_cordinates)
-        return
 
     def update_volume(self,next_or_previous='next'):
         if next_or_previous=="next":
@@ -168,12 +155,35 @@ class Visualization(HasTraits):
 
     def picker_callback(self,picker):
         #print(dir(picker))
-        #self.update_point(picker.pick_position)
         cordinates=picker.pick_position
         self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
-    def save_data(self,file_name="test"):
-        return file_name
+    def save_data(self,file_name="test_file"):
+        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+        for i in range(len(self.image_dictionary)):
+            for j in range(self.amount_of_points):
+                if self.point_location_data[i][j][0] is not None:
+                    point_data_list.append([i,j,self.point_location_data[i][j][0],self.point_location_data[i][j][1],self.point_location_data[i][j][2]])
+
+
+        book=Workbook()
+        sheet=book.active
+        sheet.append(["timestep","dot","x","y","z"])
+        for row in point_data_list:
+            sheet.append(row)
+        for row in sheet.values:
+            print(row)
+        book.save(file_name+'.xlsx')
+
+
+    def load_data(self,file_name="test_file.xlsx"):
+        book=load_workbook(filename=file_name)
+        sheet=book.active
+        for row in sheet.values:
+            if type(row[0])==int: #done to skip the first row that doesn't give data
+                self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
+        self.redraw_all_points()
+
 
     
 
@@ -181,7 +191,6 @@ class Visualization(HasTraits):
     def update_annot(self): # update the scalar field and visualization auto updates
         npspace = annot3D.get_npspace()
         self.npspace_sf.mlab_source.trait_set(scalars=npspace) 
-
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
@@ -406,8 +415,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         
     # INIT ANNOT LOAD UP
+        temp_dict=create_image_dict() #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
         #self.load_source_file('data/src.tiff')
-        self.load_source_file('data/test.tif')
+        #self.load_source_file('data/test.tif')
+        self.load_source_file('data/'+temp_dict[0]) #load the first image in the dict
         #self.load_source_file('data/test2.tif')
 
         if len(sys.argv) == 2:
@@ -462,31 +473,38 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
     
     # GENERAL WINDOW PROPS
-        self.setWindowTitle("Annotation Toolbox 3D")
+        self.setWindowTitle("Cell Annotation")
         self.setCentralWidget(w)
-
-
-        def print_test(name):
-            print(name)
 
         def create_button(self,text,width,update=[0,0,0]): #function to create standard button
             self.button=QPushButton(text)
             self.button.setFixedWidth(width)
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
-            #self.button.clicked.connect(lambda: self.mayavi_widget.visualization.determine_new_point(update))
-            return self.button
+            return self.button    
 
-        self.test_button=QPushButton('delete point')
-        self.test_button.setFixedWidth(70)
-        self.test_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
-        canvas_layout.addWidget(self.test_button,3,0)
+        self.delete_button=QPushButton('delete point')
+        self.delete_button.setFixedWidth(110)
+        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
+        canvas_layout.addWidget(self.delete_button,3,0)
+
+        self.save_button=QPushButton('save data')
+        self.save_button.setFixedWidth(100)
+        self.save_button.clicked.connect(lambda: self.mayavi_widget.visualization.save_data())
+        canvas_layout.addWidget(self.save_button,3,1)
+
+        self.load_button=QPushButton('load data')
+        self.load_button.setFixedWidth(100)
+        self.load_button.clicked.connect(lambda: self.mayavi_widget.visualization.load_data())
+        canvas_layout.addWidget(self.load_button,3,2)
 
         self.x_label = QLabel('X')
         self.y_label = QLabel('Y')
         self.z_label = QLabel('Z')
+        self.slide_label = QLabel('slide 1') #number of current slide modified when switching
         canvas_layout.addWidget(self.x_label,0,0)
         canvas_layout.addWidget(self.y_label,1,0)
         canvas_layout.addWidget(self.z_label,2,0)
+        canvas_layout.addWidget(self.slide_label,4,2)
 
         canvas_layout.addWidget(create_button(self,'-5',50,[-5,0,0]),0,1) #create x-5 button
         canvas_layout.addWidget(create_button(self,'-1',50,[-1,0,0]),0,2) #create x-1 button
@@ -505,7 +523,7 @@ class MainWindow(QMainWindow):
 
         def change_selected_point(new_point):
             new_point=new_point.split(" ")[1] #split the string and take the number
-            self.mayavi_widget.visualization.current_point_index=int(new_point)
+            self.mayavi_widget.visualization.current_point_index=int(new_point)-1 #-1 becouse index starts at 0
 
         point_amount=20 #amount of points in pointlist
         point_list=[]   #list for the selectable points in the combobox
@@ -737,16 +755,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addWidget(self.annot_opacity_slider)
         # self.toolbar.addWidget(QLabel('Zoom'))
         # self.toolbar.addWidget(self.zoom_slider)
-
-    def load_annot_dialog(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.')
-
-        global annot3D, current_slide
-        if fname:
-            annot3D.load(fname)
-            for p in ['xy', 'xz', 'yz']:
-                self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
-
     
     def merge_annot_dialog(self):
         fnames_list, _ = QFileDialog.getOpenFileNames(self, 'Select multiple annotation files to merge and load', '.')
@@ -762,12 +770,24 @@ class MainWindow(QMainWindow):
         if fname:
             annot3D.load_model_weights(fname)
 
+    def load_annot_dialog(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.xlsx")
+
+        #global annot3D, current_slide
+        if fname:
+            window.mayavi_widget.visualization.load_data(fname)
+            #annot3D.load(fname)
+            #for p in ['xy', 'xz', 'yz']:
+            #    self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
 
     def save_annots_dialog(self):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.')
-        global annot3D
+        #global annot3D
         if fname:
-            annot3D.save(os.path.join(fname))    
+            print(fname)
+            print(_)
+            window.mayavi_widget.visualization.save_data(fname) 
+        #    annot3D.save(os.path.join(fname))    
 
 
     def export_dialog(self):
@@ -776,6 +796,11 @@ class MainWindow(QMainWindow):
         print(fname)
         if fname:
             annot3D.export(fname, 'xz')
+
+    def update_slide_number(self): #used to change slide number display
+        slide_number=self.mayavi_widget.visualization.current_image_number
+        text="slide "+str(slide_number+1)
+        self.slide_label.setText(text)
 
     def goto_slide(self):
         global p, annot3D
@@ -786,6 +811,7 @@ class MainWindow(QMainWindow):
             if cs < 0: # slide out of range
                 return
         window.mayavi_widget.visualization.update_volume(cs)
+        self.update_slide_number()
 
 
 
@@ -936,9 +962,12 @@ class MainWindow(QMainWindow):
 
     def change_volume_model_next(self):
         window.mayavi_widget.visualization.update_volume('next')
+        #self.slide_label.setText('test')
+        self.update_slide_number()
 
     def change_volume_model_previous(self):
         window.mayavi_widget.visualization.update_volume('previous')
+        self.update_slide_number()
 
 
         
