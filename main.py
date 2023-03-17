@@ -1,7 +1,7 @@
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import QCoreApplication, QEvent, QSize, QMetaObject, Qt, SLOT, Slot
 from PySide2.QtGui import QBitmap, QColor, QCursor, QIcon, QImage, QKeySequence, QPainter, QPalette, QPixmap, QResizeEvent, QColor
-from PySide2.QtWidgets import QApplication, QCheckBox, QComboBox, QDateEdit, QDateTimeEdit, QDial, QDockWidget, QDoubleSpinBox, QFileDialog, QFontComboBox, QGraphicsGridLayout, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLCDNumber, QLabel, QLineEdit, QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStatusBar, QTimeEdit, QToolBar, QGridLayout, QVBoxLayout, QWidget, QAction, QShortcut
+from PySide2.QtWidgets import QApplication, QCheckBox, QComboBox, QDateEdit, QDateTimeEdit, QDial, QDockWidget, QDoubleSpinBox, QFileDialog, QDialog, QFontComboBox, QGraphicsGridLayout, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLCDNumber, QLabel, QLineEdit, QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStatusBar, QTimeEdit, QToolBar, QGridLayout, QVBoxLayout, QWidget, QAction, QShortcut
 
 
 from traits.api import HasTraits, Instance, on_trait_change, Range
@@ -17,7 +17,7 @@ from AnnotationSpace3D import AnnotationSpace3D
 import random
 import sys
 import matplotlib.pyplot as plt
-from helpers import read_tiff, apply_contrast, apply_brightness, disk, extract_max_value, create_image_dict
+from helpers import read_tiff, disk, create_image_dict
 import asyncio
 from openpyxl import Workbook, load_workbook
 
@@ -86,7 +86,11 @@ class Visualization(HasTraits):
 
         global annot3D
         npimages = annot3D.get_npimages()
-        #print(npimages)
+
+        self.x_lenght=len(npimages[0][0])
+        self.y_lenght=len(npimages[0])
+        self.z_lenght=len(npimages)
+
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
@@ -108,6 +112,14 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=10)
+
+    def draw_previous_point(self): #places the point in the same location as it was in the previous image number
+        if self.current_image_number==0: #there is no previous point for index 0
+            return
+        elif self.point_location_data[self.current_image_number-1][self.current_point_index][0]==None: #check if previous dot location is not None
+            return
+        new_location=self.point_location_data[self.current_image_number-1][self.current_point_index]
+        self.draw_point(new_location[0],new_location[1],new_location[2])
 
     def delete_point(self):
         #update point data
@@ -171,14 +183,29 @@ class Visualization(HasTraits):
         sheet.append(["timestep","dot","x","y","z"])
         for row in point_data_list:
             sheet.append(row)
-        for row in sheet.values:
-            print(row)
         book.save(file_name+'.xlsx')
 
+    def export_data(self,file_name,new_x_size,new_y_size,new_z_size):
+        x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
+        y_mod=new_y_size/self.y_lenght
+        z_mod=new_z_size/self.z_lenght
+        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+        for i in range(len(self.image_dictionary)):
+            for j in range(self.amount_of_points):
+                if self.point_location_data[i][j][0] is not None:
+                    point_data_list.append([i,j,self.point_location_data[i][j][0]*x_mod,self.point_location_data[i][j][1]*y_mod,self.point_location_data[i][j][2]*z_mod])
+
+        book=Workbook()
+        sheet=book.active
+        sheet.append(["timestep","dot","x","y","z"])
+        for row in point_data_list:
+            sheet.append(row)
+        book.save(file_name+'.xlsx')
 
     def load_data(self,file_name="test_file.xlsx"):
         book=load_workbook(filename=file_name)
         sheet=book.active
+        self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #set data back to None to remove old data
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
@@ -400,7 +427,6 @@ class MainWindow(QMainWindow):
         }
 
         self.dims = (w, h, d)
-        #print(self.dims)
 
         self.num_slides = self.plane_depth[p]
 
@@ -482,20 +508,15 @@ class MainWindow(QMainWindow):
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
             return self.button    
 
-        self.delete_button=QPushButton('delete point')
-        self.delete_button.setFixedWidth(110)
+        self.delete_button=QPushButton('delete')
+        self.delete_button.setFixedWidth(60)
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
         canvas_layout.addWidget(self.delete_button,3,0)
 
-        self.save_button=QPushButton('save data')
-        self.save_button.setFixedWidth(100)
-        self.save_button.clicked.connect(lambda: self.mayavi_widget.visualization.save_data())
-        canvas_layout.addWidget(self.save_button,3,1)
-
-        self.load_button=QPushButton('load data')
-        self.load_button.setFixedWidth(100)
-        self.load_button.clicked.connect(lambda: self.mayavi_widget.visualization.load_data())
-        canvas_layout.addWidget(self.load_button,3,2)
+        self.create_button=QPushButton('create')
+        self.create_button.setFixedWidth(60)
+        self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
+        canvas_layout.addWidget(self.create_button,3,1)
 
         self.x_label = QLabel('X')
         self.y_label = QLabel('Y')
@@ -538,7 +559,7 @@ class MainWindow(QMainWindow):
         #selection_box.setFixedWidth(50)
         #v_box.addWidget(selection_box)
         canvas_layout.addWidget(selection_box,4,0)
-        
+
 
 
         # self.scrollAreaXY = QScrollArea()
@@ -567,7 +588,41 @@ class MainWindow(QMainWindow):
         #canvas_layout.addWidget(QColor("red"),2,2)
         l.addLayout(canvas_layout)
 
+        #popup layout
+        self.popup=QDialog(self)
+        self.popup.setWindowTitle("Export information")
         
+
+        self.popup_layout = QGridLayout()
+        x_axis_label = QLabel('X axis size')
+        y_axis_label = QLabel('Y axis size')
+        z_axis_label = QLabel('Z axis size')
+
+        self.x_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.x_lenght)
+        self.y_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.y_lenght)
+        self.z_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.z_lenght)
+
+        accept_button=QPushButton('export')
+        #self.accept_button.setFixedWidth(60)
+        accept_button.clicked.connect(self.popup.accept)
+
+        cancel_button=QPushButton('cancel')
+        #self.cancel_button.setFixedWidth(60)
+        cancel_button.clicked.connect(self.popup.reject)
+
+
+
+        self.popup_layout.addWidget(x_axis_label,0,0)
+        self.popup_layout.addWidget(self.x_input,0,1)
+        self.popup_layout.addWidget(y_axis_label,1,0)
+        self.popup_layout.addWidget(self.y_input,1,1)
+        self.popup_layout.addWidget(z_axis_label,2,0)
+        self.popup_layout.addWidget(self.z_input,2,1)
+        self.popup_layout.addWidget(accept_button,3,0)
+        self.popup_layout.addWidget(cancel_button,3,1)
+
+
+        self.popup.setLayout(self.popup_layout)
 
     
 
@@ -784,18 +839,20 @@ class MainWindow(QMainWindow):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.')
         #global annot3D
         if fname:
-            print(fname)
-            print(_)
             window.mayavi_widget.visualization.save_data(fname) 
         #    annot3D.save(os.path.join(fname))    
 
 
     def export_dialog(self):
-        fname, _ = QFileDialog.getSaveFileName(self, 'Export dataset directory (src and annot)', '.') # here fname is folder/dir name
-        global annot3D
-        print(fname)
+        outcome=self.popup.exec_()
+        if outcome==0: #don't do rest of function if cancel button has been pressed
+            return
+        x_size=self.x_input.value()
+        y_size=self.y_input.value()
+        z_size=self.z_input.value()
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.')
         if fname:
-            annot3D.export(fname, 'xz')
+            window.mayavi_widget.visualization.export_data(fname,x_size,y_size,z_size)
 
     def update_slide_number(self): #used to change slide number display
         slide_number=self.mayavi_widget.visualization.current_image_number

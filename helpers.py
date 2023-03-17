@@ -75,20 +75,6 @@ def apply_contrast(npslice, f):
 def apply_brightness(npslice, f):
     return (npslice*f).astype(np.short)
 
-def extract_max_value(nparray): #insert 3d arrays
-    max_value_array=np.zeros_like(nparray[0])
-    for i in nparray:
-        j=0
-        while j < len(i):
-            k=0
-            while k < len(i[0]):
-                if i[j][k]>max_value_array[j][k]:
-                    max_value_array[j][k]=i[j][k]
-                k+=1
-            j+=1
-
-    return max_value_array
-
 def create_image_dict(directory="data"):#returns dictonary of image file names
     file_list=[]
     for file in os.listdir(directory):
