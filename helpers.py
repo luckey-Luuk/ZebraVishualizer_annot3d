@@ -90,5 +90,6 @@ def create_image_dict(directory="data"):#returns dictonary of image file names
 
 #print(create_image_dict())
 #test_array=[[[1,2,3],[4,5,6]],[[10,-2,-3],[-4,50,-6]],[[-11,-21,-31],[-41,-51,61]]]
-#test_array=np.array(test_array)
-#extract_max_value(test_array)
+#print(test_array)
+#test_array=np.array(test_array)*0.5
+#print(np.amax(test_array))

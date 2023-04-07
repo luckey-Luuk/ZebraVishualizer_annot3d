@@ -74,13 +74,18 @@ class Visualization(HasTraits):
         self.image_dictionary=create_image_dict()
         self.current_image_number=0
         self.current_point_index=0
+        self.transparancy=1.0
+        self.mode="Annot"
 
         self.amount_of_points=20
         self.colour_array=[(1,0,0),(1,1,0),(0,0,1),(0.95,0.5,0.2),(0.55,0.1,0.7),(0.3,1,1),(1,0.75,0.8),(0.65,0.4,0.15),(1,1,0.8),(0.5,0,0),(0.65,1,0.75),(0.5,0.5,0),(1,1,1),(0.05,0.05,0.05),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0)]
         self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
+        
+        self.mayavi_result_dots=[None for i in range(len(self.image_dictionary))] #for mayvi to store points for the display view
+
+        self.mayavi_result_lines=[None for i in range(len(self.image_dictionary)-1)] #for mayavi to store lines for the display view
 
         self.mayavi_dots=[None for i in range(self.amount_of_points)]#location for mayavi to store individual dots
-
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
@@ -93,16 +98,20 @@ class Visualization(HasTraits):
 
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
-        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmin=0,vmax=np.amax(npimages)*self.transparancy)
 
         self.figure.on_mouse_pick(self.picker_callback)
 
-
-        #bg_original._volume_property.set_color('greens')
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
-        #print('test')
          #self.scene.scene.disable_render = False
+
+        #self.camera_focalpoint=mlab.view()[3]
+        #self.camera_distance=mlab.view()[2]
+        #print(mlab.view())
+
+    #def adjust_camera(self): #adjusts the camera back to the original distance and focal point
+    #    mlab.view(distance=self.camera_distance,focalpoint=self.camera_focalpoint)
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
         #update point data
@@ -112,6 +121,7 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=10)
+        #self.adjust_camera()
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
         if self.current_image_number==0: #there is no previous point for index 0
@@ -129,12 +139,15 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
 
-    def redraw_all_points(self): #redraws all points, used to update points for the next timestep
+    def delete_all_points(self):
         for i in range(self.amount_of_points):
             if self.mayavi_dots[i] is not None:
                 self.mayavi_dots[i].remove()
                 self.mayavi_dots[i]=None
 
+    def redraw_all_points(self): #redraws all points, used to update points for the next timestep
+        self.delete_all_points()
+        for i in range(self.amount_of_points):
             if self.point_location_data[self.current_image_number][i][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
                 self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=self.colour_array[i],scale_factor=10)
 
@@ -142,8 +155,6 @@ class Visualization(HasTraits):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
         if old_value[0] is not None:#check if value exists 
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
-
-    
 
     def update_volume(self,next_or_previous='next'):
         if next_or_previous=="next":
@@ -161,14 +172,64 @@ class Visualization(HasTraits):
                 self.current_image_number=next_or_previous
         window.load_source_file('data/'+self.image_dictionary[self.current_image_number])
         npimages = annot3D.get_npimages()
-        self.volume.remove()
-        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0))
+        if self.volume is not None:
+            self.volume.remove()
+            self.npspace_sf.remove()
+        npspace = annot3D.get_npspace()
+        self.npspace_sf = mlab.pipeline.scalar_field(npspace)
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmax=np.amax(npimages)*self.transparancy)
         self.redraw_all_points()
+    
+    def remove_volume(self):
+        if self.volume is not None: #can't be removed if it isn't there in the first place
+            self.volume.remove()
+            self.volume=None
+            self.npspace_sf.remove()
+            self.npspace_sf=None
+    
+    def draw_results(self):
+        for i in range(len(self.point_location_data)):
+            if self.point_location_data[i][self.current_point_index][0] is not None: #check if point exists
+                x_cordinate=self.point_location_data[i][self.current_point_index][0]
+                y_cordinate=self.point_location_data[i][self.current_point_index][1]
+                z_cordinate=self.point_location_data[i][self.current_point_index][2]
+                self.mayavi_result_dots[i]=mlab.points3d(x_cordinate,y_cordinate,z_cordinate,color=self.colour_array[self.current_point_index],scale_factor=3)
+
+
+                if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None
+                    x_cordinates=[self.point_location_data[i-1][self.current_point_index][0],x_cordinate]
+                    y_cordinates=[self.point_location_data[i-1][self.current_point_index][1],y_cordinate]
+                    z_cordinates=[self.point_location_data[i-1][self.current_point_index][2],z_cordinate]
+                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_cordinates,y_cordinates,z_cordinates,color=(0,0.9,0),tube_radius=1)
+
+    def remove_results(self):
+        for i in range(len(self.mayavi_result_dots)):
+            if self.mayavi_result_dots[i] is not None:
+                self.mayavi_result_dots[i].remove()
+                self.mayavi_result_dots[i]=None
+
+        for i in range(len(self.mayavi_result_lines)):
+            if self.mayavi_result_lines[i] is not None:
+                self.mayavi_result_lines[i].remove()
+                self.mayavi_result_lines[i]=None
+
+    def change_mode(self): #changes between end result and annot mode
+        if self.mode=="Annot":
+            self.remove_volume()
+            self.delete_all_points()
+            self.mode="Result"
+            self.draw_results()
+        else:
+            self.remove_results()
+            self.mode="Annot"
+            self.redraw_all_points()
+            self.update_volume(None)
 
     def picker_callback(self,picker):
-        #print(dir(picker))
-        cordinates=picker.pick_position
-        self.draw_point(cordinates[0],cordinates[1],cordinates[2])
+        if self.mode=="Annot":
+            #print(dir(picker))
+            cordinates=picker.pick_position
+            self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
     def save_data(self,file_name="test_file"):
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
@@ -193,11 +254,14 @@ class Visualization(HasTraits):
         for i in range(len(self.image_dictionary)):
             for j in range(self.amount_of_points):
                 if self.point_location_data[i][j][0] is not None:
-                    point_data_list.append([i,j,self.point_location_data[i][j][0]*x_mod,self.point_location_data[i][j][1]*y_mod,self.point_location_data[i][j][2]*z_mod])
+                    x=self.point_location_data[i][j][0]*x_mod
+                    y=self.point_location_data[i][j][1]*y_mod
+                    z=self.point_location_data[i][j][2]*z_mod
+                    point_data_list.append([j,i,x,y,z])
 
         book=Workbook()
         sheet=book.active
-        sheet.append(["timestep","dot","x","y","z"])
+        sheet.append(["tracking number","slice","x","y","z"])
         for row in point_data_list:
             sheet.append(row)
         book.save(file_name+'.xlsx')
@@ -478,9 +542,10 @@ class MainWindow(QMainWindow):
 
     # CANVAS LAYOUT
         canvas_layout = QGridLayout()
-        #self.slide_label = QLabel('xy: 1')
-        #self.slide_label.setFixedWidth(40)
-        #canvas_layout.addWidget(self.slide_label,0,1)
+        canvas_layout.setAlignment(Qt.AlignLeft)
+        sub_canvas_bar_layout = QGridLayout()
+        sub_canvas_functions_layout=QGridLayout()
+        sub_canvas_slide_and_selector_layout=QGridLayout()
 
 
     # TOOLBAR, STATUSBAR, MENU
@@ -511,21 +576,38 @@ class MainWindow(QMainWindow):
         self.delete_button=QPushButton('delete')
         self.delete_button.setFixedWidth(60)
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
-        canvas_layout.addWidget(self.delete_button,3,0)
+        sub_canvas_functions_layout.addWidget(self.delete_button,0,1)
 
         self.create_button=QPushButton('create')
         self.create_button.setFixedWidth(60)
         self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        canvas_layout.addWidget(self.create_button,3,1)
+        sub_canvas_functions_layout.addWidget(self.create_button,0,0)
+
+        self.mode_button=QPushButton("mode")
+        self.mode_button.setFixedWidth(60)
+        self.mode_button.clicked.connect(lambda: self.mayavi_widget.visualization.change_mode())
+        sub_canvas_functions_layout.addWidget(self.mode_button,0,2)
+
+        gotoButton = QPushButton('goto')
+        gotoButton.setFixedWidth(60)
+        gotoButton.clicked.connect(self.goto_slide)
+        sub_canvas_functions_layout.addWidget(gotoButton,0,3)
 
         self.x_label = QLabel('X')
+        self.x_label.setFixedWidth(60)
         self.y_label = QLabel('Y')
+        self.y_label.setFixedWidth(60)
         self.z_label = QLabel('Z')
+        self.z_label.setFixedWidth(60)
+
         self.slide_label = QLabel('slide 1') #number of current slide modified when switching
+        #canvas_layout.addWidget(self.slide_label,4,2)
+        sub_canvas_slide_and_selector_layout.addWidget(self.slide_label,0,3)
+
         canvas_layout.addWidget(self.x_label,0,0)
         canvas_layout.addWidget(self.y_label,1,0)
         canvas_layout.addWidget(self.z_label,2,0)
-        canvas_layout.addWidget(self.slide_label,4,2)
+        
 
         canvas_layout.addWidget(create_button(self,'-5',50,[-5,0,0]),0,1) #create x-5 button
         canvas_layout.addWidget(create_button(self,'-1',50,[-1,0,0]),0,2) #create x-1 button
@@ -545,6 +627,9 @@ class MainWindow(QMainWindow):
         def change_selected_point(new_point):
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)-1 #-1 becouse index starts at 0
+            if self.mayavi_widget.visualization.mode=="Result": #change between different results if mode is result
+                self.mayavi_widget.visualization.remove_results()
+                self.mayavi_widget.visualization.draw_results()
 
         point_amount=20 #amount of points in pointlist
         point_list=[]   #list for the selectable points in the combobox
@@ -553,14 +638,34 @@ class MainWindow(QMainWindow):
 
         selection_box=QComboBox()
         selection_box.addItems(point_list)
-        
+        selection_box.setFixedWidth(120)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
-        
-        #selection_box.setFixedWidth(50)
-        #v_box.addWidget(selection_box)
-        canvas_layout.addWidget(selection_box,4,0)
+        #canvas_layout.addWidget(selection_box,4,0)
+        sub_canvas_slide_and_selector_layout.addWidget(selection_box,0,0)
 
+        ChangeVolumeNextButton = QPushButton('>')
+        ChangeVolumeNextButton.clicked.connect(self.change_volume_model_next)
+        sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumeNextButton,0,2)
 
+        ChangeVolumePreviusButton = QPushButton('<')
+        ChangeVolumePreviusButton.clicked.connect(self.change_volume_model_previous)
+        sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumePreviusButton,0,1)
+
+        self.transparency_slider = QSlider(Qt.Horizontal)
+        self.transparency_slider.setValue(10)
+        self.transparency_slider.setMinimum(1.0)
+        self.transparency_slider.setMaximum(20.0)
+        self.transparency_slider.setSingleStep(0.1)
+        self.transparency_slider.setFixedWidth(300)
+        self.transparency_slider.sliderReleased.connect(self.change_transparancy)
+
+        sub_canvas_bar_layout.addWidget(QLabel("Transparency"),0,0)
+        sub_canvas_bar_layout.addWidget(self.transparency_slider,0,1)
+        #canvas_layout.addWidget(self.transparency_slider,6,0) 
+        #canvas_layout.addLayout(arg__1=sub_canvas_bar_layout,row=6,rowSpan=-1,column=0,columnSpan=-1,alignment=Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_bar_layout,6,0,-1,-1,Qt.AlignLeft)
 
         # self.scrollAreaXY = QScrollArea()
         # self.scrollAreaXY.setWidget(self.c['xy'])
@@ -581,11 +686,6 @@ class MainWindow(QMainWindow):
         # canvas_layout.addWidget(self.scrollAreaXZ,1,2, stretch=0)
         # canvas_layout.addWidget(self.scrollAreaYZ,2,1, stretch=0)
 
-        #canvas_layout.addWidget(self.c['xy'],2,2)
-        #canvas_layout.addWidget(self.c['xz'],1,2)
-        #canvas_layout.addWidget(self.c['yz'],2,1)
-
-        #canvas_layout.addWidget(QColor("red"),2,2)
         l.addLayout(canvas_layout)
 
         #popup layout
@@ -660,33 +760,33 @@ class MainWindow(QMainWindow):
         exportAction.setStatusTip('Export source and annotations as dataset directory')
         exportAction.triggered.connect(self.export_dialog)
 
-        selectEraserAction = QAction(QIcon(get_filled_pixmap('graphics/eraser.png')), 'Toggle Eraser', self)
-        selectEraserAction.setShortcut('E')
-        selectEraserAction.setStatusTip('Toggle eraser')
-        selectEraserAction.setCheckable(True)
-        selectEraserAction.triggered.connect(self.toggle_eraser)
+        #selectEraserAction = QAction(QIcon(get_filled_pixmap('graphics/eraser.png')), 'Toggle Eraser', self)
+        #selectEraserAction.setShortcut('E')
+        #selectEraserAction.setStatusTip('Toggle eraser')
+        #selectEraserAction.setCheckable(True)
+        #selectEraserAction.triggered.connect(self.toggle_eraser)
 
-        self.xyAction = QAction('xy', self)
-        self.xyAction.setShortcut('1')
-        self.xyAction.setStatusTip('Switch to xy plane')
-        self.xyAction.setCheckable(True)
-        self.xyAction.triggered.connect(lambda: self.switch_plane('xy'))
+        #self.xyAction = QAction('xy', self)
+        #self.xyAction.setShortcut('1')
+        #self.xyAction.setStatusTip('Switch to xy plane')
+        #self.xyAction.setCheckable(True)
+        #self.xyAction.triggered.connect(lambda: self.switch_plane('xy'))
 
-        self.xzAction = QAction('xz', self)
-        self.xzAction.setShortcut('2')
-        self.xzAction.setStatusTip('Switch to xz plane')
-        self.xzAction.setCheckable(True)
-        self.xzAction.triggered.connect(lambda: self.switch_plane('xz'))
+        #self.xzAction = QAction('xz', self)
+        #self.xzAction.setShortcut('2')
+        #self.xzAction.setStatusTip('Switch to xz plane')
+        #self.xzAction.setCheckable(True)
+        #self.xzAction.triggered.connect(lambda: self.switch_plane('xz'))
 
-        self.yzAction = QAction('yz', self)
-        self.yzAction.setShortcut('3')
-        self.yzAction.setStatusTip('Switch to yz plane')
-        self.yzAction.setCheckable(True)
-        self.yzAction.triggered.connect(lambda: self.switch_plane('yz'))
+        #self.yzAction = QAction('yz', self)
+        #self.yzAction.setShortcut('3')
+        #self.yzAction.setStatusTip('Switch to yz plane')
+        #self.yzAction.setCheckable(True)
+        #self.yzAction.triggered.connect(lambda: self.switch_plane('yz'))
 
         gotoAction = QAction('goto', self)
         gotoAction.setShortcut(QKeySequence.Find)
-        gotoAction.setStatusTip('Go to specific slide on selected plane')
+        gotoAction.setStatusTip('Go to specific slide')
         gotoAction.triggered.connect(self.goto_slide)
 
         ChangeVolumeNextAction = QAction('>', self)
@@ -698,6 +798,7 @@ class MainWindow(QMainWindow):
         ChangeVolumePreviusAction.setShortcut(QKeySequence.Find)
         ChangeVolumePreviusAction.setStatusTip('Go to another volume rendering')
         ChangeVolumePreviusAction.triggered.connect(self.change_volume_model_previous)
+
         
 
     # HIDDEN HOTKEY ACTIONS
@@ -750,66 +851,69 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(exitAction)
 
     # adding toolbar actions
-        self.toolbar = self.addToolBar('Main')
-        self.toolbar.addActions([self.xyAction, self.xzAction, self.yzAction, gotoAction, selectEraserAction,ChangeVolumePreviusAction,ChangeVolumeNextAction])
+        #self.toolbar = self.addToolBar('Main')
+        #self.toolbar.addActions([ gotoAction, ChangeVolumePreviusAction,ChangeVolumeNextAction])
 
 
 
     def setup_sliders(self):
         # create
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setValue(global_brightness)
-        self.brightness_slider.setMinimum(1)
-        self.brightness_slider.setMaximum(30)
-        self.brightness_slider.valueChanged.connect(self.change_brightness)
 
-        self.contrast_slider = QSlider(Qt.Horizontal)
-        self.contrast_slider.setValue(global_contrast)
-        self.contrast_slider.setMinimum(1)
-        self.contrast_slider.setMaximum(15)
-        self.contrast_slider.valueChanged.connect(self.change_contrast)
+        #self.brightness_slider = QSlider(Qt.Horizontal)
+        #self.brightness_slider.setValue(global_brightness)
+        #self.brightness_slider.setMinimum(1)
+        #self.brightness_slider.setMaximum(30)
+        #self.brightness_slider.valueChanged.connect(self.change_brightness)
 
-        self.brush_size_slider = QSlider(Qt.Horizontal)
-        self.brush_size_slider.setValue(brush_size)
-        self.brush_size_slider.setMinimum(1)
-        self.brush_size_slider.setMaximum(15)
-        self.brush_size_slider.valueChanged.connect(self.change_brush_size)
+        #self.contrast_slider = QSlider(Qt.Horizontal)
+        #self.contrast_slider.setValue(global_contrast)
+        #self.contrast_slider.setMinimum(1)
+        #self.contrast_slider.setMaximum(15)
+        #self.contrast_slider.valueChanged.connect(self.change_contrast)
 
-        self.eraser_size_slider = QSlider(Qt.Horizontal)
-        self.eraser_size_slider.setValue(eraser_size)
-        self.eraser_size_slider.setMinimum(1)
-        self.eraser_size_slider.setMaximum(15)
-        self.eraser_size_slider.valueChanged.connect(self.change_eraser_size)
+        #self.brush_size_slider = QSlider(Qt.Horizontal)
+        #self.brush_size_slider.setValue(brush_size)
+        #self.brush_size_slider.setMinimum(1)
+        #self.brush_size_slider.setMaximum(15)
+        #self.brush_size_slider.valueChanged.connect(self.change_brush_size)
 
-        self.annot_opacity_slider = QSlider(Qt.Horizontal)
-        self.annot_opacity_slider.setValue(int(global_annot_opacity*10))
-        self.annot_opacity_slider.setSingleStep(2) # 0.1 * scaled later
-        self.annot_opacity_slider.setMinimum(2)
-        self.annot_opacity_slider.setMaximum(10)
-        self.annot_opacity_slider.valueChanged.connect(self.change_annot_opacity)
+        #self.eraser_size_slider = QSlider(Qt.Horizontal)
+        #self.eraser_size_slider.setValue(eraser_size)
+        #self.eraser_size_slider.setMinimum(1)
+        #self.eraser_size_slider.setMaximum(15)
+        #self.eraser_size_slider.valueChanged.connect(self.change_eraser_size)
 
-        self.zoom_slider = QSlider(Qt.Horizontal)
-        self.zoom_slider.setValue(int(global_zoom*10))
-        self.zoom_slider.setSingleStep(2) # 0.1 * scaled later
-        self.zoom_slider.setMinimum(0)
-        self.zoom_slider.setMaximum(10)
-        self.zoom_slider.valueChanged.connect(self.change_zoom)
+        #self.annot_opacity_slider = QSlider(Qt.Horizontal)
+        #self.annot_opacity_slider.setValue(int(global_annot_opacity*10))
+        #self.annot_opacity_slider.setSingleStep(2) # 0.1 * scaled later
+        #self.annot_opacity_slider.setMinimum(2)
+        #self.annot_opacity_slider.setMaximum(10)
+        #self.annot_opacity_slider.valueChanged.connect(self.change_annot_opacity)
+
+        #self.zoom_slider = QSlider(Qt.Horizontal)
+        #self.zoom_slider.setValue(int(global_zoom*10))
+        #self.zoom_slider.setSingleStep(2) # 0.1 * scaled later
+        #self.zoom_slider.setMinimum(0)
+        #self.zoom_slider.setMaximum(10)
+        #self.zoom_slider.valueChanged.connect(self.change_zoom)
 
         # add to toolbar
-        self.toolbar.addSeparator()
-        self.toolbar.setStyleSheet("QToolBar{spacing:10px;}")
-        self.toolbar.addWidget(QLabel('Brightness'))
-        self.toolbar.addWidget(self.brightness_slider)
-        self.toolbar.addWidget(QLabel('Contrast'))
-        self.toolbar.addWidget(self.contrast_slider)
-        self.toolbar.addWidget(QLabel('Brush Size'))
-        self.toolbar.addWidget(self.brush_size_slider)
-        self.toolbar.addWidget(QLabel('Eraser Size'))
-        self.toolbar.addWidget(self.eraser_size_slider)
-        self.toolbar.addWidget(QLabel('Annotation Opacity'))
-        self.toolbar.addWidget(self.annot_opacity_slider)
+        #self.toolbar.addSeparator()
+        #self.toolbar.setStyleSheet("QToolBar{spacing:10px;}")
+
+        #self.toolbar.addWidget(QLabel('Brightness'))
+        #self.toolbar.addWidget(self.brightness_slider)
+        #self.toolbar.addWidget(QLabel('Contrast'))
+        #self.toolbar.addWidget(self.contrast_slider)
+        #self.toolbar.addWidget(QLabel('Brush Size'))
+        #self.toolbar.addWidget(self.brush_size_slider)
+        #self.toolbar.addWidget(QLabel('Eraser Size'))
+        #self.toolbar.addWidget(self.eraser_size_slider)
+        #self.toolbar.addWidget(QLabel('Annotation Opacity'))
+        #self.toolbar.addWidget(self.annot_opacity_slider)
         # self.toolbar.addWidget(QLabel('Zoom'))
         # self.toolbar.addWidget(self.zoom_slider)
+        return
     
     def merge_annot_dialog(self):
         fnames_list, _ = QFileDialog.getOpenFileNames(self, 'Select multiple annotation files to merge and load', '.')
@@ -944,22 +1048,6 @@ class MainWindow(QMainWindow):
     def render(self):
         self.mayavi_widget.update_annot()
 
-    
-    # def focus_plane(self, curr_p):
-    #     for p in ['xy', 'xz', 'yz']:
-    #         if p == curr_p:
-    #             self.c[p].focus(True)
-    #             self.c[p].hide(False)
-    #         else:
-    #             self.c[p].focus(False)
-    #             self.c[p].hide(True)
-
-    # def reset_focus(self):
-    #     for p in ['xy', 'xz', 'yz']:
-    #         self.c[p].focus(False)
-    #         self.c[p].hide(False)
-
-
     def predict_slide(self, num_slides=None):
         global annot3D, p, current_slide
 
@@ -975,16 +1063,7 @@ class MainWindow(QMainWindow):
                 self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]+i))
 
 
-    def slide_left(self):
-        global current_slide, p
-        if (current_slide[p] > 0):
-            self.change_slide(-1)
-
-
-    def slide_right(self):
-        global current_slide, p
-        if (current_slide[p] < self.num_slides-1):
-            self.change_slide(1)
+    
 
 
     def change_slide(self, step):
@@ -1019,14 +1098,22 @@ class MainWindow(QMainWindow):
 
     def change_volume_model_next(self):
         window.mayavi_widget.visualization.update_volume('next')
-        #self.slide_label.setText('test')
         self.update_slide_number()
 
     def change_volume_model_previous(self):
         window.mayavi_widget.visualization.update_volume('previous')
         self.update_slide_number()
 
+    def slide_left(self):
+        self.change_volume_model_previous()
 
+    def slide_right(self):
+        self.change_volume_model_next()
+
+    def change_transparancy(self):
+        new_transparancy=self.transparency_slider.value()/10
+        window.mayavi_widget.visualization.transparancy=new_transparancy
+        window.mayavi_widget.visualization.update_volume(None)
         
 
 
