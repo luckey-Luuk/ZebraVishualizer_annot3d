@@ -578,9 +578,6 @@ class MainWindow(QMainWindow):
     # TOOLBAR, STATUSBAR, MENU
         self.setup_bar_actions()
 
-    # SLIDERS
-        self.setup_sliders()
-
     # MAYAVI RENDER VIEW
         self.rdock = QDockWidget("Render View", self) # render dock
         self.rdock.setFeatures(self.rdock.features() & ~QDockWidget.DockWidgetClosable) # unclosable
@@ -692,30 +689,11 @@ class MainWindow(QMainWindow):
 
         sub_canvas_bar_layout.addWidget(QLabel("Transparency"),0,0)
         sub_canvas_bar_layout.addWidget(self.transparency_slider,0,1)
-        #canvas_layout.addWidget(self.transparency_slider,6,0) 
-        #canvas_layout.addLayout(arg__1=sub_canvas_bar_layout,row=6,rowSpan=-1,column=0,columnSpan=-1,alignment=Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_layout,6,0,-1,-1,Qt.AlignLeft)
 
-        # self.scrollAreaXY = QScrollArea()
-        # self.scrollAreaXY.setWidget(self.c['xy'])
-        # self.scrollAreaXY.setWidgetResizable(True)
-        # self.scrollAreaXY.setMinimumSize(self.dims[0], self.dims[1])
 
-        # self.scrollAreaXZ = QScrollArea()
-        # self.scrollAreaXZ.setWidget(self.c['xz'])
-        # self.scrollAreaXZ.setWidgetResizable(True)
-        # self.scrollAreaXZ.setMinimumSize(self.dims[2], self.dims[1])
-
-        # self.scrollAreaYZ = QScrollArea()
-        # self.scrollAreaYZ.setWidget(self.c['yz'])
-        # self.scrollAreaYZ.setWidgetResizable(True)
-        # self.scrollAreaYZ.setMinimumSize(self.dims[1], self.dims[2])
-
-        # canvas_layout.addWidget(self.scrollAreaXY,2,2, stretch=1)
-        # canvas_layout.addWidget(self.scrollAreaXZ,1,2, stretch=0)
-        # canvas_layout.addWidget(self.scrollAreaYZ,2,1, stretch=0)
 
         l.addLayout(canvas_layout)
 
@@ -791,30 +769,6 @@ class MainWindow(QMainWindow):
         exportAction.setStatusTip('Export source and annotations as dataset directory')
         exportAction.triggered.connect(self.export_dialog)
 
-        #selectEraserAction = QAction(QIcon(get_filled_pixmap('graphics/eraser.png')), 'Toggle Eraser', self)
-        #selectEraserAction.setShortcut('E')
-        #selectEraserAction.setStatusTip('Toggle eraser')
-        #selectEraserAction.setCheckable(True)
-        #selectEraserAction.triggered.connect(self.toggle_eraser)
-
-        #self.xyAction = QAction('xy', self)
-        #self.xyAction.setShortcut('1')
-        #self.xyAction.setStatusTip('Switch to xy plane')
-        #self.xyAction.setCheckable(True)
-        #self.xyAction.triggered.connect(lambda: self.switch_plane('xy'))
-
-        #self.xzAction = QAction('xz', self)
-        #self.xzAction.setShortcut('2')
-        #self.xzAction.setStatusTip('Switch to xz plane')
-        #self.xzAction.setCheckable(True)
-        #self.xzAction.triggered.connect(lambda: self.switch_plane('xz'))
-
-        #self.yzAction = QAction('yz', self)
-        #self.yzAction.setShortcut('3')
-        #self.yzAction.setStatusTip('Switch to yz plane')
-        #self.yzAction.setCheckable(True)
-        #self.yzAction.triggered.connect(lambda: self.switch_plane('yz'))
-
         gotoAction = QAction('goto', self)
         gotoAction.setShortcut(QKeySequence.Find)
         gotoAction.setStatusTip('Go to specific slide')
@@ -880,71 +834,6 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(loadWeightsAction)
         fileMenu.addAction(exportAction)
         fileMenu.addAction(exitAction)
-
-    # adding toolbar actions
-        #self.toolbar = self.addToolBar('Main')
-        #self.toolbar.addActions([ gotoAction, ChangeVolumePreviusAction,ChangeVolumeNextAction])
-
-
-
-    def setup_sliders(self):
-        # create
-
-        #self.brightness_slider = QSlider(Qt.Horizontal)
-        #self.brightness_slider.setValue(global_brightness)
-        #self.brightness_slider.setMinimum(1)
-        #self.brightness_slider.setMaximum(30)
-        #self.brightness_slider.valueChanged.connect(self.change_brightness)
-
-        #self.contrast_slider = QSlider(Qt.Horizontal)
-        #self.contrast_slider.setValue(global_contrast)
-        #self.contrast_slider.setMinimum(1)
-        #self.contrast_slider.setMaximum(15)
-        #self.contrast_slider.valueChanged.connect(self.change_contrast)
-
-        #self.brush_size_slider = QSlider(Qt.Horizontal)
-        #self.brush_size_slider.setValue(brush_size)
-        #self.brush_size_slider.setMinimum(1)
-        #self.brush_size_slider.setMaximum(15)
-        #self.brush_size_slider.valueChanged.connect(self.change_brush_size)
-
-        #self.eraser_size_slider = QSlider(Qt.Horizontal)
-        #self.eraser_size_slider.setValue(eraser_size)
-        #self.eraser_size_slider.setMinimum(1)
-        #self.eraser_size_slider.setMaximum(15)
-        #self.eraser_size_slider.valueChanged.connect(self.change_eraser_size)
-
-        #self.annot_opacity_slider = QSlider(Qt.Horizontal)
-        #self.annot_opacity_slider.setValue(int(global_annot_opacity*10))
-        #self.annot_opacity_slider.setSingleStep(2) # 0.1 * scaled later
-        #self.annot_opacity_slider.setMinimum(2)
-        #self.annot_opacity_slider.setMaximum(10)
-        #self.annot_opacity_slider.valueChanged.connect(self.change_annot_opacity)
-
-        #self.zoom_slider = QSlider(Qt.Horizontal)
-        #self.zoom_slider.setValue(int(global_zoom*10))
-        #self.zoom_slider.setSingleStep(2) # 0.1 * scaled later
-        #self.zoom_slider.setMinimum(0)
-        #self.zoom_slider.setMaximum(10)
-        #self.zoom_slider.valueChanged.connect(self.change_zoom)
-
-        # add to toolbar
-        #self.toolbar.addSeparator()
-        #self.toolbar.setStyleSheet("QToolBar{spacing:10px;}")
-
-        #self.toolbar.addWidget(QLabel('Brightness'))
-        #self.toolbar.addWidget(self.brightness_slider)
-        #self.toolbar.addWidget(QLabel('Contrast'))
-        #self.toolbar.addWidget(self.contrast_slider)
-        #self.toolbar.addWidget(QLabel('Brush Size'))
-        #self.toolbar.addWidget(self.brush_size_slider)
-        #self.toolbar.addWidget(QLabel('Eraser Size'))
-        #self.toolbar.addWidget(self.eraser_size_slider)
-        #self.toolbar.addWidget(QLabel('Annotation Opacity'))
-        #self.toolbar.addWidget(self.annot_opacity_slider)
-        # self.toolbar.addWidget(QLabel('Zoom'))
-        # self.toolbar.addWidget(self.zoom_slider)
-        return
     
     def merge_annot_dialog(self):
         fnames_list, _ = QFileDialog.getOpenFileNames(self, 'Select multiple annotation files to merge and load', '.')
