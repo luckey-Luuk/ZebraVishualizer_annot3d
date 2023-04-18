@@ -88,6 +88,37 @@ def create_image_dict(directory="data"):#returns dictonary of image file names
         file_dict[i]=file_list[i]
     return file_dict
 
+def create_colour_array(custom_list=None): #returns a colour pallet
+    if custom_list==None:
+        red=(230, 25, 75)
+        yellow=(255, 225, 25)
+        blue=(0, 130, 200)
+        orange=(245, 130, 48)
+        purple=(145, 30, 180)
+        cyan=(70, 240, 240)
+        magenta=(240, 50, 230)
+        lime=(210, 245, 60)
+        pink=(250, 190, 212)
+        teal=(0, 128, 128)
+        lavender=(220, 190, 255)
+        brown=(170, 110, 40)
+        beige=(255, 250, 200)
+        maroon=(128, 0, 0)
+        mint=(170, 255, 195)
+        olive=(128, 128, 0)
+        apricot=(255, 215, 180)
+        navy=(0, 0, 128)
+        grey=(128, 128, 128)
+        white=(255, 255, 255)
+
+        pallet=[red,yellow,blue,orange,purple,cyan,magenta,lime,pink,teal,lavender,brown,beige,maroon,mint,olive,apricot,navy,grey,white]
+    else:
+        pallet=custom_list
+    
+    for i in range(len(pallet)):
+        colour=pallet[i]
+        pallet[i]=(colour[0]/255,colour[1]/255,colour[2]/255)
+    return pallet
 #print(create_image_dict())
 #test_array=[[[1,2,3],[4,5,6]],[[10,-2,-3],[-4,50,-6]],[[-11,-21,-31],[-41,-51,61]]]
 #print(test_array)

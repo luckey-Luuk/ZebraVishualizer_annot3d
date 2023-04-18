@@ -17,9 +17,10 @@ from AnnotationSpace3D import AnnotationSpace3D
 import random
 import sys
 import matplotlib.pyplot as plt
-from helpers import read_tiff, disk, create_image_dict
+from helpers import read_tiff, disk, create_image_dict, create_colour_array
 import asyncio
 from openpyxl import Workbook, load_workbook
+import math
 
 
 COLORS = {
@@ -75,10 +76,13 @@ class Visualization(HasTraits):
         self.current_image_number=0
         self.current_point_index=0
         self.transparancy=1.0
-        self.mode="Annot"
+
+        self.showVolume=True
+        self.showResults=False
 
         self.amount_of_points=20
-        self.colour_array=[(1,0,0),(1,1,0),(0,0,1),(0.95,0.5,0.2),(0.55,0.1,0.7),(0.3,1,1),(1,0.75,0.8),(0.65,0.4,0.15),(1,1,0.8),(0.5,0,0),(0.65,1,0.75),(0.5,0.5,0),(1,1,1),(0.05,0.05,0.05),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0),(0,0,0)]
+        self.colour_array=create_colour_array()
+        
         self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
         
         self.mayavi_result_dots=[None for i in range(len(self.image_dictionary))] #for mayvi to store points for the display view
@@ -104,6 +108,7 @@ class Visualization(HasTraits):
 
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
+        mlab.orientation_axes()
          #self.scene.scene.disable_render = False
 
         #self.camera_focalpoint=mlab.view()[3]
@@ -213,20 +218,30 @@ class Visualization(HasTraits):
                 self.mayavi_result_lines[i].remove()
                 self.mayavi_result_lines[i]=None
 
-    def change_mode(self): #changes between end result and annot mode
-        if self.mode=="Annot":
-            self.remove_volume()
-            self.delete_all_points()
-            self.mode="Result"
+    def change_result(self): #changes showing and not showing results
+        if self.showResults==False:
+            self.showResults=True
             self.draw_results()
+            window.ToggleVolumeButton.setEnabled(True)
         else:
             self.remove_results()
-            self.mode="Annot"
+            self.showResults=False
+            window.ToggleVolumeButton.setEnabled(False)
+            if self.showVolume==False:
+                self.toggle_volume()
+
+    def toggle_volume(self):
+        if self.showVolume==True:
+            self.showVolume=False
+            self.remove_volume()
+            self.delete_all_points()
+        else:
+            self.showVolume=True
             self.redraw_all_points()
             self.update_volume(None)
 
     def picker_callback(self,picker):
-        if self.mode=="Annot":
+        if self.showVolume==True:
             #print(dir(picker))
             cordinates=picker.pick_position
             self.draw_point(cordinates[0],cordinates[1],cordinates[2])
@@ -244,27 +259,39 @@ class Visualization(HasTraits):
         sheet.append(["timestep","dot","x","y","z"])
         for row in point_data_list:
             sheet.append(row)
-        book.save(file_name+'.xlsx')
+        book.save(file_name)
 
     def export_data(self,file_name,new_x_size,new_y_size,new_z_size):
         x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
         y_mod=new_y_size/self.y_lenght
         z_mod=new_z_size/self.z_lenght
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
-        for i in range(len(self.image_dictionary)):
-            for j in range(self.amount_of_points):
+        for i in range(len(self.image_dictionary)): #for every slice number
+            for j in range(self.amount_of_points): #for every tracking number
                 if self.point_location_data[i][j][0] is not None:
                     x=self.point_location_data[i][j][0]*x_mod
                     y=self.point_location_data[i][j][1]*y_mod
                     z=self.point_location_data[i][j][2]*z_mod
-                    point_data_list.append([j,i,x,y,z])
+                    point_data_list.append([j,i,x,y,z,-1])
+        
+        encounterd_points=[]
+        for i in range(len(point_data_list)):
+            for j in encounterd_points:
+                if point_data_list[i][0]==j[0] and point_data_list[i][1]==j[1]+1:
+                    encounterd_points.remove(j)
+                    x_exponent=math.pow(point_data_list[i][2]-j[2],2)
+                    y_exponent=math.pow(point_data_list[i][3]-j[3],2)
+                    z_exponent=math.pow(point_data_list[i][4]-j[4],2)
+                    point_data_list[i][5]=math.sqrt(x_exponent+y_exponent+z_exponent)
+                    break
+            encounterd_points.append(point_data_list[i])
 
         book=Workbook()
         sheet=book.active
-        sheet.append(["tracking number","slice","x","y","z"])
+        sheet.append(["tracking number","slice number","x","y","z","Distance"])
         for row in point_data_list:
             sheet.append(row)
-        book.save(file_name+'.xlsx')
+        book.save(file_name)
 
     def load_data(self,file_name="test_file.xlsx"):
         book=load_workbook(filename=file_name)
@@ -574,24 +601,23 @@ class MainWindow(QMainWindow):
             return self.button    
 
         self.delete_button=QPushButton('delete')
-        self.delete_button.setFixedWidth(60)
+        #self.delete_button.setFixedWidth(60)
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
         sub_canvas_functions_layout.addWidget(self.delete_button,0,1)
 
-        self.create_button=QPushButton('create')
-        self.create_button.setFixedWidth(60)
+        self.create_button=QPushButton('continue')
+        #self.create_button.setFixedWidth(60)
         self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
         sub_canvas_functions_layout.addWidget(self.create_button,0,0)
 
-        self.mode_button=QPushButton("mode")
-        self.mode_button.setFixedWidth(60)
-        self.mode_button.clicked.connect(lambda: self.mayavi_widget.visualization.change_mode())
-        sub_canvas_functions_layout.addWidget(self.mode_button,0,2)
+        self.result_button=QPushButton("trajectory")
+        self.result_button.clicked.connect(lambda: self.mayavi_widget.visualization.change_result())
+        sub_canvas_functions_layout.addWidget(self.result_button,0,3)
 
         gotoButton = QPushButton('goto')
         gotoButton.setFixedWidth(60)
         gotoButton.clicked.connect(self.goto_slide)
-        sub_canvas_functions_layout.addWidget(gotoButton,0,3)
+        sub_canvas_slide_and_selector_layout.addWidget(gotoButton,0,0)
 
         self.x_label = QLabel('X')
         self.x_label.setFixedWidth(60)
@@ -600,7 +626,7 @@ class MainWindow(QMainWindow):
         self.z_label = QLabel('Z')
         self.z_label.setFixedWidth(60)
 
-        self.slide_label = QLabel('slide 1') #number of current slide modified when switching
+        self.slide_label = QLabel('slide 1/'+str(len(create_image_dict()))) #number of current slide modified when switching
         #canvas_layout.addWidget(self.slide_label,4,2)
         sub_canvas_slide_and_selector_layout.addWidget(self.slide_label,0,3)
 
@@ -627,21 +653,20 @@ class MainWindow(QMainWindow):
         def change_selected_point(new_point):
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)-1 #-1 becouse index starts at 0
-            if self.mayavi_widget.visualization.mode=="Result": #change between different results if mode is result
+            if self.mayavi_widget.visualization.showResults==True: #change between different results if mode is result
                 self.mayavi_widget.visualization.remove_results()
                 self.mayavi_widget.visualization.draw_results()
 
         point_amount=20 #amount of points in pointlist
         point_list=[]   #list for the selectable points in the combobox
         for i in range(point_amount):
-            point_list.append("point "+str(i+1))
+            point_list.append("cell "+str(i+1))
 
         selection_box=QComboBox()
         selection_box.addItems(point_list)
-        selection_box.setFixedWidth(120)    
+        #selection_box.setFixedWidth(120)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
-        #canvas_layout.addWidget(selection_box,4,0)
-        sub_canvas_slide_and_selector_layout.addWidget(selection_box,0,0)
+        sub_canvas_functions_layout.addWidget(selection_box,0,2)
 
         ChangeVolumeNextButton = QPushButton('>')
         ChangeVolumeNextButton.clicked.connect(self.change_volume_model_next)
@@ -650,6 +675,12 @@ class MainWindow(QMainWindow):
         ChangeVolumePreviusButton = QPushButton('<')
         ChangeVolumePreviusButton.clicked.connect(self.change_volume_model_previous)
         sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumePreviusButton,0,1)
+
+        self.ToggleVolumeButton=QPushButton('Volume')
+        self.ToggleVolumeButton.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
+        sub_canvas_functions_layout.addWidget(self.ToggleVolumeButton,0,4)
+
+        self.ToggleVolumeButton.setEnabled(False)
 
         self.transparency_slider = QSlider(Qt.Horizontal)
         self.transparency_slider.setValue(10)
@@ -940,7 +971,7 @@ class MainWindow(QMainWindow):
             #    self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
 
     def save_annots_dialog(self):
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
         #global annot3D
         if fname:
             window.mayavi_widget.visualization.save_data(fname) 
@@ -954,19 +985,19 @@ class MainWindow(QMainWindow):
         x_size=self.x_input.value()
         y_size=self.y_input.value()
         z_size=self.z_input.value()
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.')
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
         if fname:
             window.mayavi_widget.visualization.export_data(fname,x_size,y_size,z_size)
 
     def update_slide_number(self): #used to change slide number display
         slide_number=self.mayavi_widget.visualization.current_image_number
-        text="slide "+str(slide_number+1)
+        text="slide "+str(slide_number+1)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
         self.slide_label.setText(text)
 
     def goto_slide(self):
         global p, annot3D
 
-        cs, ok = QInputDialog.getText(self, "Go to slide", "Go to slide on plane "+p)
+        cs, ok = QInputDialog.getText(self, "Go to slide", "Go to slide")
         if ok and cs.isnumeric(): # current slide cs must be a number
             cs = int(cs)-1
             if cs < 0: # slide out of range
@@ -1097,12 +1128,14 @@ class MainWindow(QMainWindow):
         self.c['yz'].set_pen_color(c)
 
     def change_volume_model_next(self):
-        window.mayavi_widget.visualization.update_volume('next')
-        self.update_slide_number()
+        if window.mayavi_widget.visualization.showVolume==True:
+            window.mayavi_widget.visualization.update_volume('next')
+            self.update_slide_number()
 
     def change_volume_model_previous(self):
-        window.mayavi_widget.visualization.update_volume('previous')
-        self.update_slide_number()
+        if window.mayavi_widget.visualization.showVolume==True:
+            window.mayavi_widget.visualization.update_volume('previous')
+            self.update_slide_number()
 
     def slide_left(self):
         self.change_volume_model_previous()
