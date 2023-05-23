@@ -100,6 +100,8 @@ class Visualization(HasTraits):
         self.y_lenght=len(npimages[0])
         self.z_lenght=len(npimages)
 
+        self.sphere_size=10
+
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmin=0,vmax=np.amax(npimages)*self.transparancy)
@@ -111,12 +113,6 @@ class Visualization(HasTraits):
         mlab.orientation_axes()
          #self.scene.scene.disable_render = False
 
-        #self.camera_focalpoint=mlab.view()[3]
-        #self.camera_distance=mlab.view()[2]
-        #print(mlab.view())
-
-    #def adjust_camera(self): #adjusts the camera back to the original distance and focal point
-    #    mlab.view(distance=self.camera_distance,focalpoint=self.camera_focalpoint)
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
         #update point data
@@ -125,7 +121,7 @@ class Visualization(HasTraits):
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
-        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=10)
+        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=self.sphere_size)
         #self.adjust_camera()
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
@@ -154,7 +150,7 @@ class Visualization(HasTraits):
         self.delete_all_points()
         for i in range(self.amount_of_points):
             if self.point_location_data[self.current_image_number][i][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=self.colour_array[i],scale_factor=10)
+                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=self.colour_array[i],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
@@ -170,7 +166,7 @@ class Visualization(HasTraits):
             if self.current_image_number==0:
                 return
             self.current_image_number-=1
-        elif isinstance(next_or_previous,int):
+        elif isinstance(next_or_previous,int): #used for goto function to go to a specific slide
             if len(self.image_dictionary)-1<next_or_previous:
                 self.current_image_number=len(self.image_dictionary)-1
             else:
@@ -302,10 +298,7 @@ class Visualization(HasTraits):
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
 
-
     
-
-
     def update_annot(self): # update the scalar field and visualization auto updates
         npspace = annot3D.get_npspace()
         self.npspace_sf.mlab_source.trait_set(scalars=npspace) 
@@ -375,116 +368,6 @@ class Label(QLabel):
             m = int((h - (pixmapHeight * w / pixmapWidth)) / 2)
             self.setContentsMargins(0, m, 0, m)
 
-
-class Canvas(QWidget):
-
-    def __init__(self, image, plane):
-        super().__init__()
-        global current_slide, annot3D, COLORS
-        self.dx, self.dy = image.shape
-        self.p = plane # plane
-
-        self.l = QGridLayout()
-
-        self.bg = QLabel()
-        # self.bg.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.bg.setScaledContents(True)
-        # self.bg.setMinimumSize(QSize(0,0))
-        # self.bg.setMaximumSize(QSize(16777215, 16777215))
-
-        self.annot = QLabel()
-        # self.annot.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # self.annot.setScaledContents(True)
-        # self.annot.setMinimumSize(QSize(0,0))
-        # self.annot.setMaximumSize(QSize(16777215, 16777215))
-        # self.annot.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-
-
-        image = np.require(image, np.short, 'C')   
-        qimg = QImage(image.data, self.dy, self.dx, 2 * self.dy , QImage.Format_Grayscale16)
-        self.bg.setPixmap(QPixmap(qimg))
-
-        image = np.zeros((self.dx, self.dy, 4))
-        image = np.require(image, np.uint8, 'C') 
-        qimg = QImage(image.data, self.dy, self.dx, 4 * self.dy , QImage.Format_RGBA8888)
-        self.annot.setPixmap(QPixmap(qimg))
-
-        self.opacity_effect = QGraphicsOpacityEffect() 
-        self.opacity_effect.setOpacity(0.5) 
-        self.annot.setGraphicsEffect(self.opacity_effect)
-
-        # self.bg.resize(self.bg.pixmap().size())
-        # self.annot.resize(self.annot.pixmap().size())
-
-        self.l.addWidget(self.bg, 0, 0, Qt.AlignLeft | Qt.AlignTop)
-        self.l.addWidget(self.annot, 0, 0, Qt.AlignLeft | Qt.AlignTop)
-        
-        self.setLayout(self.l)
-
-        self.pen_color_rgba = INIT_COLOR_RGBA
-        
-        self.update_cursor()
-
-
-    def update_cursor(self):
-        if eraser_on:
-            self.setCursor(get_circle_cursor(eraser_size, ERASER_COLOR_RGBA))
-        else:
-            self.setCursor(get_circle_cursor(brush_size, self.pen_color_rgba))
-
-
-    def update_annot_opacity(self):
-        self.opacity_effect.setOpacity(global_annot_opacity) 
-
-
-    def set_pen_color(self, c):
-        self.pen_color_rgba = COLORS[c]
-        self.update_cursor()
-
-
-    def mouseMoveEvent(self, e):   
-        global current_slide, annot3D    
-        x = e.x()-10
-        y = e.y()-10
-        
-        d = current_slide[self.p]
-
-        if (eraser_on): 
-            annot3D.draw(self.p, d, x, y, eraser_size, 0, [0,0,0,0])
-        else:
-            annot3D.draw(self.p, d, x, y, brush_size, 1, self.pen_color_rgba)
-
-        self.change_annot(annot3D.get_slice(self.p, d))
-        self.annot.update()
-
-
-    def mousePressEvent(self, e):
-        annot3D.save_history(self.p, current_slide[self.p]) # save history after every line stroke
-        
-
-    def change_bg(self, image):
-        image = np.require(image, np.short, 'C')        
-        qimg = QImage(image.data, self.dy, self.dx, 2 * self.dy , QImage.Format_Grayscale16)
-        qpixmap = QPixmap(qimg)
-        # w = int(self.dx*(1+global_zoom))
-        # h = int(self.dy*(1+global_zoom))
-        # qpixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.bg.setPixmap(qpixmap)
-        self.bg.update()
-
-
-    def change_annot(self, image):
-        annot = np.require(image, np.uint8, 'C') 
-        qimg = QImage(annot.data, self.dy, self.dx, 4 * self.dy , QImage.Format_RGBA8888)
-        qpixmap = QPixmap(qimg)
-        # self.annot.resize((1+global_zoom)*self.annot.pixmap().size())
-        self.annot.setPixmap(qpixmap)
-        self.annot.update()
-
-
-
-
-
 class MainWindow(QMainWindow):
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
@@ -553,24 +436,11 @@ class MainWindow(QMainWindow):
         w.setLayout(l)
 
 
-    # COLOR PALETTE
-        # palette_layout = QGridLayout()
-        # i, j = 1, 1
-        # for c in COLORS:
-        #     b = QPaletteButton(c)
-        #     b.pressed.connect(lambda c=c : self.set_canvas_pen_color(c))
-        #     palette_layout.addWidget(b, i, j)
-        #     j += 1
-        #     if j > 2:
-        #         j = 1
-        #         i += 1
-
-        # l.addLayout(palette_layout)
-
     # CANVAS LAYOUT
         canvas_layout = QGridLayout()
         canvas_layout.setAlignment(Qt.AlignLeft)
-        sub_canvas_bar_layout = QGridLayout()
+        sub_canvas_bar_transparancy_layout = QGridLayout()
+        sub_canvas_bar_size_layout= QGridLayout()
         sub_canvas_functions_layout=QGridLayout()
         sub_canvas_slide_and_selector_layout=QGridLayout()
 
@@ -591,40 +461,42 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Cell Annotation")
         self.setCentralWidget(w)
 
-        def create_button(self,text,width,update=[0,0,0]): #function to create standard button
+        def create_button(self,text,update=[0,0,0]): #function to create standard button
             self.button=QPushButton(text)
-            self.button.setFixedWidth(width)
+            #self.button.setFixedWidth(width)
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
+            self.button.setMinimumSize(60,60)
             return self.button    
 
         self.delete_button=QPushButton('delete')
-        #self.delete_button.setFixedWidth(60)
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
+        self.delete_button.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(self.delete_button,0,1)
 
         self.create_button=QPushButton('continue')
-        #self.create_button.setFixedWidth(60)
         self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
+        self.create_button.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(self.create_button,0,0)
 
         self.result_button=QPushButton("trajectory")
         self.result_button.clicked.connect(lambda: self.mayavi_widget.visualization.change_result())
+        self.result_button.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(self.result_button,0,3)
 
         gotoButton = QPushButton('goto')
-        gotoButton.setFixedWidth(60)
         gotoButton.clicked.connect(self.goto_slide)
+        gotoButton.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(gotoButton,0,0)
 
         self.x_label = QLabel('X')
-        self.x_label.setFixedWidth(60)
+        self.x_label.setMinimumSize(50,50)
         self.y_label = QLabel('Y')
-        self.y_label.setFixedWidth(60)
+        self.y_label.setMinimumSize(50,50)
         self.z_label = QLabel('Z')
-        self.z_label.setFixedWidth(60)
+        self.z_label.setMinimumSize(50,50)
 
         self.slide_label = QLabel('slide 1/'+str(len(create_image_dict()))) #number of current slide modified when switching
-        #canvas_layout.addWidget(self.slide_label,4,2)
+        self.slide_label.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(self.slide_label,0,3)
 
         canvas_layout.addWidget(self.x_label,0,0)
@@ -632,20 +504,20 @@ class MainWindow(QMainWindow):
         canvas_layout.addWidget(self.z_label,2,0)
         
 
-        canvas_layout.addWidget(create_button(self,'-5',50,[-5,0,0]),0,1) #create x-5 button
-        canvas_layout.addWidget(create_button(self,'-1',50,[-1,0,0]),0,2) #create x-1 button
-        canvas_layout.addWidget(create_button(self,'+1',50,[1,0,0]),0,3) #create x+1 button
-        canvas_layout.addWidget(create_button(self,'+5',50,[5,0,0]),0,4) #create x+5 button
+        canvas_layout.addWidget(create_button(self,'-5',[-5,0,0]),0,1) #create x-5 button
+        canvas_layout.addWidget(create_button(self,'-1',[-1,0,0]),0,2) #create x-1 button
+        canvas_layout.addWidget(create_button(self,'+1',[1,0,0]),0,3) #create x+1 button
+        canvas_layout.addWidget(create_button(self,'+5',[5,0,0]),0,4) #create x+5 button
 
-        canvas_layout.addWidget(create_button(self,'-5',50,[0,-5,0]),1,1) #create y-5 button
-        canvas_layout.addWidget(create_button(self,'-1',50,[0,-1,0]),1,2) #create y-1 button
-        canvas_layout.addWidget(create_button(self,'+1',50,[0,1,0]),1,3) #create y+1 button
-        canvas_layout.addWidget(create_button(self,'+5',50,[0,5,0]),1,4) #create y+5 button
+        canvas_layout.addWidget(create_button(self,'-5',[0,-5,0]),1,1) #create y-5 button
+        canvas_layout.addWidget(create_button(self,'-1',[0,-1,0]),1,2) #create y-1 button
+        canvas_layout.addWidget(create_button(self,'+1',[0,1,0]),1,3) #create y+1 button
+        canvas_layout.addWidget(create_button(self,'+5',[0,5,0]),1,4) #create y+5 button
 
-        canvas_layout.addWidget(create_button(self,'-5',50,[0,0,-5]),2,1) #create z-5 button
-        canvas_layout.addWidget(create_button(self,'-1',50,[0,0,-1]),2,2) #create z-1 button
-        canvas_layout.addWidget(create_button(self,'+1',50,[0,0,1]),2,3) #create z+1 button
-        canvas_layout.addWidget(create_button(self,'+5',50,[0,0,5]),2,4) #create z+5 button
+        canvas_layout.addWidget(create_button(self,'-5',[0,0,-5]),2,1) #create z-5 button
+        canvas_layout.addWidget(create_button(self,'-1',[0,0,-1]),2,2) #create z-1 button
+        canvas_layout.addWidget(create_button(self,'+1',[0,0,1]),2,3) #create z+1 button
+        canvas_layout.addWidget(create_button(self,'+5',[0,0,5]),2,4) #create z+5 button
 
         def change_selected_point(new_point):
             new_point=new_point.split(" ")[1] #split the string and take the number
@@ -663,18 +535,22 @@ class MainWindow(QMainWindow):
         selection_box.addItems(point_list)
         #selection_box.setFixedWidth(120)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
+        selection_box.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(selection_box,0,2)
 
         ChangeVolumeNextButton = QPushButton('>')
         ChangeVolumeNextButton.clicked.connect(self.change_volume_model_next)
+        ChangeVolumeNextButton.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumeNextButton,0,2)
 
         ChangeVolumePreviusButton = QPushButton('<')
         ChangeVolumePreviusButton.clicked.connect(self.change_volume_model_previous)
+        ChangeVolumePreviusButton.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumePreviusButton,0,1)
 
         self.ToggleVolumeButton=QPushButton('Volume')
         self.ToggleVolumeButton.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
+        self.ToggleVolumeButton.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(self.ToggleVolumeButton,0,4)
 
         self.ToggleVolumeButton.setEnabled(False)
@@ -687,11 +563,25 @@ class MainWindow(QMainWindow):
         self.transparency_slider.setFixedWidth(300)
         self.transparency_slider.sliderReleased.connect(self.change_transparancy)
 
-        sub_canvas_bar_layout.addWidget(QLabel("Transparency"),0,0)
-        sub_canvas_bar_layout.addWidget(self.transparency_slider,0,1)
+        self.sphere_size_slider = QSlider(Qt.Horizontal)
+        self.sphere_size_slider.setValue(10)
+        self.sphere_size_slider.setMinimum(1.0)
+        self.sphere_size_slider.setMaximum(20.0)
+        self.sphere_size_slider.setSingleStep(0.1)
+        self.sphere_size_slider.setFixedWidth(300)
+        self.sphere_size_slider.sliderReleased.connect(self.change_sphere_size)
+
+        sub_canvas_bar_transparancy_layout.addWidget(QLabel("Transparency"),0,0)
+        sub_canvas_bar_transparancy_layout.addWidget(self.transparency_slider,0,1)
+
+        sub_canvas_bar_size_layout.addWidget(QLabel("Sphere size"),0,0)
+        sub_canvas_bar_size_layout.addWidget(self.sphere_size_slider,0,1)
+
+
         canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
-        canvas_layout.addLayout(sub_canvas_bar_layout,6,0,-1,-1,Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_bar_transparancy_layout,6,0,1,0,Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_bar_size_layout,7,0,1,0,Qt.AlignLeft)
 
 
 
@@ -749,16 +639,6 @@ class MainWindow(QMainWindow):
         loadAnnotAction.setStatusTip('Load new annotations file')
         loadAnnotAction.triggered.connect(self.load_annot_dialog)
 
-        mergeAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/load.png')), 'Merge annotations', self)
-        mergeAnnotAction.setShortcut('Ctrl+M')
-        mergeAnnotAction.setStatusTip('Merge multiple annotations')
-        mergeAnnotAction.triggered.connect(self.merge_annot_dialog)
-
-        loadWeightsAction = QAction(QIcon(get_filled_pixmap('graphics/merge.png')), 'Load model weights', self)
-        loadWeightsAction.setShortcut('Ctrl+W')
-        loadWeightsAction.setStatusTip('Load model weights')
-        loadWeightsAction.triggered.connect(self.load_weights_dialog)
-
         saveAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/save.png')), 'Save annotations', self)
         saveAnnotAction.setShortcut(QKeySequence.Save) # Ctrl+S
         saveAnnotAction.setStatusTip('Save annotations file')
@@ -797,32 +677,14 @@ class MainWindow(QMainWindow):
         slideRightAction.setStatusTip('Slide right')
         slideRightAction.triggered.connect(self.slide_right)
 
-        undoAction = QAction('Undo', self)
-        undoAction.setShortcut(QKeySequence.Undo)
-        undoAction.setStatusTip('Undo last annotation')
-        undoAction.triggered.connect(self.undo)
-
         renderAction = QAction('Render', self)
         renderAction.setShortcut('R')
         renderAction.setStatusTip('Update annotation render')
         renderAction.triggered.connect(self.render)
 
-        predictAction = QAction('Predict Current', self)
-        predictAction.setShortcut('P')
-        predictAction.setStatusTip('Predict for current slide')
-        predictAction.triggered.connect(lambda: self.predict_slide(num_slides=None))
-
-        predict5Action = QAction('Predict Current', self)
-        predict5Action.setShortcut('Ctrl+P')
-        predict5Action.setStatusTip('Predict for current 5 slides')
-        predict5Action.triggered.connect(lambda: self.predict_slide(num_slides=5))
-
         self.addAction(slideLeftAction)
         self.addAction(slideRightAction)
-        self.addAction(undoAction)
         self.addAction(renderAction)
-        self.addAction(predictAction)
-        self.addAction(predict5Action)
         
     
     # adding menubar actions 
@@ -830,24 +692,9 @@ class MainWindow(QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(loadAnnotAction)
         fileMenu.addAction(saveAnnotAction)
-        fileMenu.addAction(mergeAnnotAction)
-        fileMenu.addAction(loadWeightsAction)
         fileMenu.addAction(exportAction)
         fileMenu.addAction(exitAction)
     
-    def merge_annot_dialog(self):
-        fnames_list, _ = QFileDialog.getOpenFileNames(self, 'Select multiple annotation files to merge and load', '.')
-
-        global annot3D, current_slide
-        if len(fnames_list) > 0:
-            annot3D.mergeload(fnames_list)
-
-
-    def load_weights_dialog(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Load model weights (hfd5)', '.')
-        global annot3D
-        if fname:
-            annot3D.load_model_weights(fname)
 
     def load_annot_dialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.xlsx")
@@ -855,16 +702,12 @@ class MainWindow(QMainWindow):
         #global annot3D, current_slide
         if fname:
             window.mayavi_widget.visualization.load_data(fname)
-            #annot3D.load(fname)
-            #for p in ['xy', 'xz', 'yz']:
-            #    self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
 
     def save_annots_dialog(self):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
         #global annot3D
         if fname:
-            window.mayavi_widget.visualization.save_data(fname) 
-        #    annot3D.save(os.path.join(fname))    
+            window.mayavi_widget.visualization.save_data(fname)  
 
 
     def export_dialog(self):
@@ -894,127 +737,8 @@ class MainWindow(QMainWindow):
         window.mayavi_widget.visualization.update_volume(cs)
         self.update_slide_number()
 
-
-
-    def update_canvas_cursors(self):
-        self.c['xy'].update_cursor()
-        self.c['xz'].update_cursor()
-        self.c['yz'].update_cursor()
-
-
-    def change_zoom(self):
-        global global_zoom, annot3D
-        global_zoom = self.zoom_slider.value()
-        #for p in ['xy', 'xz', 'yz']:
-        #    self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
-
-
-    def toggle_eraser(self):
-        global eraser_on
-        eraser_on = not eraser_on
-        self.update_canvas_cursors()
-
-
-    def change_brush_size(self):
-        global brush_size 
-        brush_size = self.brush_size_slider.value()
-        self.update_canvas_cursors()
-
-
-    def change_eraser_size(self):
-        #window.mayavi_widget.visualization.update_volume()
-        global eraser_size 
-        eraser_size = self.eraser_size_slider.value()
-        self.update_canvas_cursors()
-
-
-    def change_annot_opacity(self):
-        global global_annot_opacity 
-        global_annot_opacity = self.annot_opacity_slider.value() * 0.1
-        self.c['xy'].update_annot_opacity()
-        self.c['xz'].update_annot_opacity()
-        self.c['yz'].update_annot_opacity()
-
-
-    def change_brightness(self):
-        global global_brightness
-        global_brightness = self.brightness_slider.value()
-
-
-
-    def change_contrast(self):
-        global global_contrast
-        global_contrast = self.contrast_slider.value()
-    
-
-    def switch_plane(self, plane):
-        global p, current_slide
-        p = plane
-        if p == 'xy':
-            self.xzAction.setChecked(False)
-            self.yzAction.setChecked(False)
-        elif p == 'xz':
-            self.xyAction.setChecked(False)
-            self.yzAction.setChecked(False)
-        elif p == 'yz':
-            self.xyAction.setChecked(False)
-            self.xzAction.setChecked(False)
-        
-        self.num_slides = self.plane_depth[p]
-        self.change_slide(0)
-        
-
-
     def render(self):
         self.mayavi_widget.update_annot()
-
-    def predict_slide(self, num_slides=None):
-        global annot3D, p, current_slide
-
-        if p == 'xz': # model predictions work only for the plane it is trained on
-            if num_slides is None: # not specified
-                num_slides = 1
-
-            for i in range(num_slides):
-                if current_slide[p]+i >= self.dims[0]: # does not exceed slide range
-                    break
-
-                annot3D.model_predict(p, current_slide[p]+i)
-                self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]+i))
-
-
-    
-
-
-    def change_slide(self, step):
-        global current_slide, p, annot3D, slides
-        
-        current_slide[p] += step
-        cs = current_slide[p]
-
-        self.slide_label.setText(p + ': ' + str(cs+1))
-
-        self.c[p].change_bg(self.slides[p][cs])
-        self.c[p].change_annot(annot3D.get_slice(p, cs))
-
-
-    def clear(self):
-        global annot3D, p, current_slide
-        annot3D.clear_slice(p, current_slide[p])
-        self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
-
-
-    def undo(self):
-        global annot3D, current_slide
-        annot3D.undo_history()
-        for p in ['xy', 'xz', 'yz']:
-            self.c[p].change_annot(annot3D.get_slice(p, current_slide[p]))
-
-
-    def set_canvas_pen_color(self, c):
-        self.c['xy'].set_pen_color(c)
-        self.c['xz'].set_pen_color(c)
-        self.c['yz'].set_pen_color(c)
 
     def change_volume_model_next(self):
         if window.mayavi_widget.visualization.showVolume==True:
@@ -1036,6 +760,11 @@ class MainWindow(QMainWindow):
         new_transparancy=self.transparency_slider.value()/10
         window.mayavi_widget.visualization.transparancy=new_transparancy
         window.mayavi_widget.visualization.update_volume(None)
+
+    def change_sphere_size(self):
+        new_size=self.sphere_size_slider.value()
+        window.mayavi_widget.visualization.sphere_size=new_size
+        window.mayavi_widget.visualization.redraw_all_points()
         
 
 
