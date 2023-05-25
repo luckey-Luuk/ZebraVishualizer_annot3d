@@ -14,14 +14,12 @@ import numpy as np
 import os
 from PIL import Image, ImageQt
 from AnnotationSpace3D import AnnotationSpace3D
-import random
 import sys
 import matplotlib.pyplot as plt
-from helpers import read_tiff, disk, create_image_dict, create_colour_array
+from helpers import read_tiff, create_image_dict, create_colour_array
 import asyncio
 from openpyxl import Workbook, load_workbook
 import math
-
 
 COLORS = {
     '#ff0000': [255, 0, 0, 255],
@@ -37,13 +35,6 @@ p = 'xy' # xy initially, yz, xz
 current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
-eraser_on = False
-brush_size = 5
-eraser_size = 5
-global_contrast = 1
-global_brightness = 20
-global_annot_opacity = 0.8
-global_zoom = 0.0
 
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
@@ -51,18 +42,6 @@ def get_filled_pixmap(pixmap_file):
     pixmap.fill((QColor('white')))
     pixmap.setMask(mask)
     return pixmap
-
-
-def get_circle_cursor(brush_size, color_rgba):
-    x, y = (brush_size*2+1, brush_size*2+1)
-    circle_img = np.zeros((x, y, 4))
-    rr, cc = disk(center=(x//2, y//2), radius=brush_size, shape=(x, y))
-    circle_img[rr, cc] = color_rgba
-    image = np.require(circle_img, np.uint8, 'C')
-    qimg = QImage(image.data, y, x, 4 * y , QImage.Format_RGBA8888)
-    return QCursor(QPixmap(qimg))
-
-
 
 class Visualization(HasTraits):
     scene = Instance(MlabSceneModel, ())
@@ -110,8 +89,7 @@ class Visualization(HasTraits):
 
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
-        mlab.orientation_axes()
-         #self.scene.scene.disable_render = False
+        #mlab.orientation_axes()
 
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
@@ -122,7 +100,6 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=self.sphere_size)
-        #self.adjust_camera()
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
         if self.current_image_number==0: #there is no previous point for index 0
@@ -180,6 +157,7 @@ class Visualization(HasTraits):
         self.npspace_sf = mlab.pipeline.scalar_field(npspace)
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmax=np.amax(npimages)*self.transparancy)
         self.redraw_all_points()
+        #mlab.orientation_axes()
     
     def remove_volume(self):
         if self.volume is not None: #can't be removed if it isn't there in the first place
@@ -249,7 +227,6 @@ class Visualization(HasTraits):
                 if self.point_location_data[i][j][0] is not None:
                     point_data_list.append([i,j,self.point_location_data[i][j][0],self.point_location_data[i][j][1],self.point_location_data[i][j][2]])
 
-
         book=Workbook()
         sheet=book.active
         sheet.append(["timestep","dot","x","y","z"])
@@ -268,8 +245,7 @@ class Visualization(HasTraits):
                     x=self.point_location_data[i][j][0]*x_mod
                     y=self.point_location_data[i][j][1]*y_mod
                     z=self.point_location_data[i][j][2]*z_mod
-                    point_data_list.append([j,i,x,y,z,-1])
-        
+                    point_data_list.append([j,i,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
         encounterd_points=[]
         for i in range(len(point_data_list)):
             for j in encounterd_points:
@@ -297,15 +273,12 @@ class Visualization(HasTraits):
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
-
     
     def update_annot(self): # update the scalar field and visualization auto updates
         npspace = annot3D.get_npspace()
         self.npspace_sf.mlab_source.trait_set(scalars=npspace) 
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
-
-
 
 class MayaviQWidget(QWidget):
     def __init__(self, parent=None):
@@ -322,15 +295,12 @@ class MayaviQWidget(QWidget):
     def update_annot(self):
         self.visualization.update_annot()
 
-
-
 class QPaletteButton(QPushButton):
     def __init__(self, color):
         super().__init__()
         self.setFixedSize(QSize(24,24))
         self.color = color
         self.setStyleSheet("background-color: %s;" % color)
-
 
 class Label(QLabel):
 
@@ -378,13 +348,10 @@ class MainWindow(QMainWindow):
     num_slides = 0
     npimages = -1
 
-
     def load_source_file(self, filename):
         global COLORS, p, current_slide, annot3D
 
         self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
-
-
 
         self.npimages = self.slides['xy']
         
@@ -410,31 +377,22 @@ class MainWindow(QMainWindow):
             'yz': [] * h
         }
 
-
     def __init__(self):
         super().__init__()
         
     # INIT ANNOT LOAD UP
         temp_dict=create_image_dict() #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
-        #self.load_source_file('data/src.tiff')
-        #self.load_source_file('data/test.tif')
         self.load_source_file('data/'+temp_dict[0]) #load the first image in the dict
-        #self.load_source_file('data/test2.tif')
 
         if len(sys.argv) == 2:
             global annot3D
             print("Set server URL to", sys.argv[1])
-            annot3D.set_server_url(sys.argv[1])
-
-        #for p in ['xy', 'xz', 'yz']:
-        #    self.c[p] = Canvas(image=self.slides[p][0], plane=p)
-            
+            annot3D.set_server_url(sys.argv[1])  
 
         w = QWidget()
         
         l = QHBoxLayout()
         w.setLayout(l)
-
 
     # CANVAS LAYOUT
         canvas_layout = QGridLayout()
@@ -443,7 +401,6 @@ class MainWindow(QMainWindow):
         sub_canvas_bar_size_layout= QGridLayout()
         sub_canvas_functions_layout=QGridLayout()
         sub_canvas_slide_and_selector_layout=QGridLayout()
-
 
     # TOOLBAR, STATUSBAR, MENU
         self.setup_bar_actions()
@@ -532,8 +489,7 @@ class MainWindow(QMainWindow):
             point_list.append("cell "+str(i+1))
 
         selection_box=QComboBox()
-        selection_box.addItems(point_list)
-        #selection_box.setFixedWidth(120)    
+        selection_box.addItems(point_list)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
         selection_box.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(selection_box,0,2)
@@ -577,20 +533,16 @@ class MainWindow(QMainWindow):
         sub_canvas_bar_size_layout.addWidget(QLabel("Sphere size"),0,0)
         sub_canvas_bar_size_layout.addWidget(self.sphere_size_slider,0,1)
 
-
         canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_transparancy_layout,6,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_size_layout,7,0,1,0,Qt.AlignLeft)
-
-
 
         l.addLayout(canvas_layout)
 
         #popup layout
         self.popup=QDialog(self)
         self.popup.setWindowTitle("Export information")
-        
 
         self.popup_layout = QGridLayout()
         x_axis_label = QLabel('X axis size')
@@ -602,13 +554,10 @@ class MainWindow(QMainWindow):
         self.z_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.z_lenght)
 
         accept_button=QPushButton('export')
-        #self.accept_button.setFixedWidth(60)
         accept_button.clicked.connect(self.popup.accept)
 
         cancel_button=QPushButton('cancel')
-        #self.cancel_button.setFixedWidth(60)
         cancel_button.clicked.connect(self.popup.reject)
-
 
 
         self.popup_layout.addWidget(x_axis_label,0,0)
@@ -620,11 +569,7 @@ class MainWindow(QMainWindow):
         self.popup_layout.addWidget(accept_button,3,0)
         self.popup_layout.addWidget(cancel_button,3,1)
 
-
         self.popup.setLayout(self.popup_layout)
-
-    
-
 
     def setup_bar_actions(self):
         self.statusBar()
@@ -664,8 +609,6 @@ class MainWindow(QMainWindow):
         ChangeVolumePreviusAction.setStatusTip('Go to another volume rendering')
         ChangeVolumePreviusAction.triggered.connect(self.change_volume_model_previous)
 
-        
-
     # HIDDEN HOTKEY ACTIONS
         slideLeftAction = QAction('Left', self)
         slideLeftAction.setShortcut('Left')
@@ -686,7 +629,6 @@ class MainWindow(QMainWindow):
         self.addAction(slideRightAction)
         self.addAction(renderAction)
         
-    
     # adding menubar actions 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
@@ -694,7 +636,6 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(saveAnnotAction)
         fileMenu.addAction(exportAction)
         fileMenu.addAction(exitAction)
-    
 
     def load_annot_dialog(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.xlsx")
@@ -702,13 +643,17 @@ class MainWindow(QMainWindow):
         #global annot3D, current_slide
         if fname:
             window.mayavi_widget.visualization.load_data(fname)
+            window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
+            window.mayavi_widget.visualization.redraw_all_points()
+            if window.mayavi_widget.visualization.showResults==True:
+                window.mayavi_widget.visualization.change_result()
+            
 
     def save_annots_dialog(self):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
         #global annot3D
         if fname:
             window.mayavi_widget.visualization.save_data(fname)  
-
 
     def export_dialog(self):
         outcome=self.popup.exec_()
@@ -765,15 +710,12 @@ class MainWindow(QMainWindow):
         new_size=self.sphere_size_slider.value()
         window.mayavi_widget.visualization.sphere_size=new_size
         window.mayavi_widget.visualization.redraw_all_points()
-        
-
 
 if __name__ == "__main__":
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
         app = QApplication.instance()
-
 
     app.setStyle('Fusion')
     palette = QPalette()
