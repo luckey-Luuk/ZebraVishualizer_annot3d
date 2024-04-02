@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 # from skimage draw
-def disk(center, radius, *, shape=None):
+def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet meer gebruikt
   radii = np.array([radius, radius])
 
   upper_left = np.ceil(center - radii).astype(int)
@@ -42,6 +42,7 @@ def read_tiff(path): # returns tiff image stack as np array
         img.seek(i)  
         
         new_img=img.convert('L')
+        #filters om het er anders uit te laten zien
         contrast=ImageEnhance.Contrast(new_img)
         contrast_img=contrast.enhance(5)
         contrast_img=contrast_img.filter(ImageFilter.MedianFilter(size=3))
@@ -61,7 +62,7 @@ def read_tiff(path): # returns tiff image stack as np array
     return xy, xz, yz
 
 
-def apply_contrast(npslice, f):
+def apply_contrast(npslice, f): #uit annot3D, aangepast. smoothte alles (ook tif puntjes), aangepast dat puntjes blijven
     #minval = np.percentile(npslice, f) # vary threshold between 1st and 99th percentiles, when f=1
     minval=0#the lowest value will always be zero
     maxval = np.percentile(npslice, 101-f)#was 100-f is now 101-f

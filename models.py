@@ -1,3 +1,4 @@
+#niet gebruikt, neuraal netwerk, zat in bovenste balk
 input_size_init = (32, 640, 1)
 
 def unet(pretrained_weights = None, input_size=(32, 640, 1)):

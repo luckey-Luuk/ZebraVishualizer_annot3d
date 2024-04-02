@@ -51,7 +51,7 @@ class Visualization(HasTraits):
     @on_trait_change('scene.activated')
     
 
-    def update_plot(self):
+    def update_plot(self): #initializatie
 
         self.image_dictionary=create_image_dict()
         self.current_image_number=0
@@ -85,9 +85,9 @@ class Visualization(HasTraits):
 
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
-        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmin=0,vmax=np.amax(npimages)*self.transparancy)
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmin=0,vmax=np.amax(npimages)*self.transparancy) #render het volume voor de eerste keer
 
-        self.figure.on_mouse_pick(self.picker_callback)
+        self.figure.on_mouse_pick(self.picker_callback) #zet picker aan
 
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
@@ -136,7 +136,7 @@ class Visualization(HasTraits):
         if old_value[0] is not None:#check if value exists 
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
-    def update_volume(self,next_or_previous='next'):
+    def update_volume(self,next_or_previous='next'): #wisselen naar nieuwe slide
         if next_or_previous=="next":
             if self.current_image_number==len(self.image_dictionary)-1:
                 return
@@ -157,7 +157,7 @@ class Visualization(HasTraits):
             self.npspace_sf.remove()
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace)
-        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmax=np.amax(npimages)*self.transparancy)
+        self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmax=np.amax(npimages)*self.transparancy) #volume renderen
         self.redraw_all_points()
         #mlab.orientation_axes()
     
@@ -168,22 +168,22 @@ class Visualization(HasTraits):
             self.npspace_sf.remove()
             self.npspace_sf=None
     
-    def draw_results(self):
+    def draw_results(self): #tekent trajectory
         for i in range(len(self.point_location_data)):
-            if self.point_location_data[i][self.current_point_index][0] is not None: #check if point exists
+            if self.point_location_data[i][self.current_point_index][0] is not None: #check if point exists #teken punt
                 x_cordinate=self.point_location_data[i][self.current_point_index][0]
                 y_cordinate=self.point_location_data[i][self.current_point_index][1]
                 z_cordinate=self.point_location_data[i][self.current_point_index][2]
                 self.mayavi_result_dots[i]=mlab.points3d(x_cordinate,y_cordinate,z_cordinate,color=self.colour_array[self.current_point_index],scale_factor=3)
 
 
-                if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None
+                if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
                     x_cordinates=[self.point_location_data[i-1][self.current_point_index][0],x_cordinate]
                     y_cordinates=[self.point_location_data[i-1][self.current_point_index][1],y_cordinate]
                     z_cordinates=[self.point_location_data[i-1][self.current_point_index][2],z_cordinate]
                     self.mayavi_result_lines[i-1]=mlab.plot3d(x_cordinates,y_cordinates,z_cordinates,color=(0,0.9,0),tube_radius=1)
 
-    def remove_results(self):
+    def remove_results(self): #stop met trajectory visualiseren
         for i in range(len(self.mayavi_result_dots)):
             if self.mayavi_result_dots[i] is not None:
                 self.mayavi_result_dots[i].remove()
@@ -194,7 +194,7 @@ class Visualization(HasTraits):
                 self.mayavi_result_lines[i].remove()
                 self.mayavi_result_lines[i]=None
 
-    def change_result(self): #changes showing and not showing results
+    def change_result(self): #changes showing and not showing results #toggle voor trajectory (knop)
         if self.showResults==False:
             self.showResults=True
             self.draw_results()
@@ -206,7 +206,7 @@ class Visualization(HasTraits):
             if self.showVolume==False:
                 self.toggle_volume()
 
-    def toggle_volume(self):
+    def toggle_volume(self): #toggle voor volume (knop), gebruikt update en remove volume
         if self.showVolume==True:
             self.showVolume=False
             self.remove_volume()
@@ -216,13 +216,13 @@ class Visualization(HasTraits):
             self.redraw_all_points()
             self.update_volume(None)
 
-    def picker_callback(self,picker):
+    def picker_callback(self,picker): #kijkt waar je klikt en tekent punt
         if self.showVolume==True:
             #print(dir(picker))
             cordinates=picker.pick_position
             self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
-    def save_data(self,file_name="test_file"):
+    def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
         for i in range(len(self.image_dictionary)):
             for j in range(self.amount_of_points):
@@ -236,7 +236,7 @@ class Visualization(HasTraits):
             sheet.append(row)
         book.save(file_name)
 
-    def export_data(self,file_name,new_x_size,new_y_size,new_z_size):
+    def export_data(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
         x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
         y_mod=new_y_size/self.y_lenght
         z_mod=new_z_size/self.z_lenght
@@ -267,7 +267,7 @@ class Visualization(HasTraits):
             sheet.append(row)
         book.save(file_name)
 
-    def load_data(self,file_name="test_file.xlsx"):
+    def load_data(self,file_name="test_file.xlsx"): #knop load annotations
         book=load_workbook(filename=file_name)
         sheet=book.active
         self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #set data back to None to remove old data
@@ -276,13 +276,13 @@ class Visualization(HasTraits):
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
     
-    def update_annot(self): # update the scalar field and visualization auto updates
+    def update_annot(self): # update the scalar field and visualization auto updates #uit annot3D
         npspace = annot3D.get_npspace()
         self.npspace_sf.mlab_source.trait_set(scalars=npspace) 
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
-class MayaviQWidget(QWidget):
+class MayaviQWidget(QWidget): #mayavi raam
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         layout = QVBoxLayout(self)
@@ -297,14 +297,14 @@ class MayaviQWidget(QWidget):
     def update_annot(self):
         self.visualization.update_annot()
 
-class QPaletteButton(QPushButton):
+class QPaletteButton(QPushButton): #uit annot3D
     def __init__(self, color):
         super().__init__()
         self.setFixedSize(QSize(24,24))
         self.color = color
         self.setStyleSheet("background-color: %s;" % color)
 
-class Label(QLabel):
+class Label(QLabel): #uit annot3D
 
     def __init__(self):
         super(Label, self).__init__()
@@ -340,7 +340,7 @@ class Label(QLabel):
             m = int((h - (pixmapHeight * w / pixmapWidth)) / 2)
             self.setContentsMargins(0, m, 0, m)
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow): #hele raam
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
     dims = (500, 500, 25) # w, h, d
@@ -350,7 +350,7 @@ class MainWindow(QMainWindow):
     num_slides = 0
     npimages = -1
 
-    def load_source_file(self, filename):
+    def load_source_file(self, filename): #uit annot3D
         global COLORS, p, current_slide, annot3D
 
         self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
@@ -382,11 +382,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         
-    # INIT ANNOT LOAD UP
+    # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
         temp_dict=create_image_dict() #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
         self.load_source_file('data/'+temp_dict[0]) #load the first image in the dict
 
-        if len(sys.argv) == 2:
+        if len(sys.argv) == 2: #uit annot3D
             global annot3D
             print("Set server URL to", sys.argv[1])
             annot3D.set_server_url(sys.argv[1])  
@@ -396,7 +396,7 @@ class MainWindow(QMainWindow):
         l = QHBoxLayout()
         w.setLayout(l)
 
-    # CANVAS LAYOUT
+    # CANVAS LAYOUT #maak grid om knoppen op te plaatsen
         canvas_layout = QGridLayout()
         canvas_layout.setAlignment(Qt.AlignLeft)
         sub_canvas_bar_transparancy_layout = QGridLayout()
@@ -404,7 +404,7 @@ class MainWindow(QMainWindow):
         sub_canvas_functions_layout=QGridLayout()
         sub_canvas_slide_and_selector_layout=QGridLayout()
 
-    # TOOLBAR, STATUSBAR, MENU
+    # TOOLBAR, STATUSBAR, MENU #toolbar waar nu "file" op staat
         self.setup_bar_actions()
 
     # MAYAVI RENDER VIEW
@@ -427,10 +427,10 @@ class MainWindow(QMainWindow):
             self.button.setMinimumSize(60,60)
             return self.button    
 
-        self.delete_button=QPushButton('delete')
-        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point())
-        self.delete_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.delete_button,0,1)
+        self.delete_button=QPushButton('delete') #'delete' is wat er op knop staat
+        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
+        self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
+        sub_canvas_functions_layout.addWidget(self.delete_button,0,1) #plaats knop op grid (self.knop, x op grid, y op grid)
 
         self.create_button=QPushButton('continue')
         self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
@@ -447,6 +447,7 @@ class MainWindow(QMainWindow):
         gotoButton.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(gotoButton,0,0)
 
+        #voeg dingen toe die geen knoppen zijn zoals 'x', 'y', 'z' en 'slide 1/120'
         self.x_label = QLabel('X')
         self.x_label.setMinimumSize(50,50)
         self.y_label = QLabel('Y')
@@ -478,7 +479,8 @@ class MainWindow(QMainWindow):
         canvas_layout.addWidget(create_button(self,'+1',[0,0,1]),2,3) #create z+1 button
         canvas_layout.addWidget(create_button(self,'+5',[0,0,5]),2,4) #create z+5 button
 
-        def change_selected_point(new_point):
+        #maak dropbox voor 'cell 1'
+        def change_selected_point(new_point): #leest welke aangeklikt is
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)-1 #-1 becouse index starts at 0
             if self.mayavi_widget.visualization.showResults==True: #change between different results if mode is result
@@ -513,13 +515,14 @@ class MainWindow(QMainWindow):
 
         self.ToggleVolumeButton.setEnabled(False)
 
+        #voeg sliders toe, tussen 1 en 20, anders doet het gek
         self.transparency_slider = QSlider(Qt.Horizontal)
         self.transparency_slider.setValue(10)
         self.transparency_slider.setMinimum(1.0)
         self.transparency_slider.setMaximum(20.0)
         self.transparency_slider.setSingleStep(0.1)
         self.transparency_slider.setFixedWidth(300)
-        self.transparency_slider.sliderReleased.connect(self.change_transparancy)
+        self.transparency_slider.sliderReleased.connect(self.change_transparancy)  #past pas aan bij loslaten, kan ook bij bewegen maar is lag
 
         self.sphere_size_slider = QSlider(Qt.Horizontal)
         self.sphere_size_slider.setValue(10)
@@ -535,14 +538,15 @@ class MainWindow(QMainWindow):
         sub_canvas_bar_size_layout.addWidget(QLabel("Sphere size"),0,0)
         sub_canvas_bar_size_layout.addWidget(self.sphere_size_slider,0,1)
 
+        #voeg alle grids toe aan ander grid 'l'
         canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_transparancy_layout,6,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_size_layout,7,0,1,0,Qt.AlignLeft)
 
-        l.addLayout(canvas_layout)
+        l.addLayout(canvas_layout) #voeg grid 'l' toe aan window
 
-        #popup layout
+        #popup layout #voor export
         self.popup=QDialog(self)
         self.popup.setWindowTitle("Export information")
 
@@ -573,7 +577,7 @@ class MainWindow(QMainWindow):
 
         self.popup.setLayout(self.popup_layout)
 
-    def setup_bar_actions(self):
+    def setup_bar_actions(self): #beschrijf balk bovenaan met 'file'
         self.statusBar()
         
         exitAction = QAction(QIcon(get_filled_pixmap('graphics/delete.png')), 'Exit', self)
@@ -596,11 +600,13 @@ class MainWindow(QMainWindow):
         exportAction.setStatusTip('Export source and annotations as dataset directory')
         exportAction.triggered.connect(self.export_dialog)
 
+        #'goto' knop
         gotoAction = QAction('goto', self)
         gotoAction.setShortcut(QKeySequence.Find)
         gotoAction.setStatusTip('Go to specific slide')
         gotoAction.triggered.connect(self.goto_slide)
 
+        #'<' en '>' knoppen
         ChangeVolumeNextAction = QAction('>', self)
         ChangeVolumeNextAction.setShortcut(QKeySequence.Find)
         ChangeVolumeNextAction.setStatusTip('Go to another volume rendering')
@@ -622,7 +628,7 @@ class MainWindow(QMainWindow):
         slideRightAction.setStatusTip('Slide right')
         slideRightAction.triggered.connect(self.slide_right)
 
-        renderAction = QAction('Render', self)
+        renderAction = QAction('Render', self) #uit annot3D
         renderAction.setShortcut('R')
         renderAction.setStatusTip('Update annotation render')
         renderAction.triggered.connect(self.render)
@@ -639,7 +645,7 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(exportAction)
         fileMenu.addAction(exitAction)
 
-    def load_annot_dialog(self):
+    def load_annot_dialog(self): #beschrijving 'load annotations functie'
         fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.xlsx")
 
         #global annot3D, current_slide
@@ -651,6 +657,8 @@ class MainWindow(QMainWindow):
                 window.mayavi_widget.visualization.change_result()
             
 
+    #wat alle knoppen doen
+    #dialoog windows voor save en export
     def save_annots_dialog(self):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
         #global annot3D
@@ -673,7 +681,7 @@ class MainWindow(QMainWindow):
         text="slide "+str(slide_number+1)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
         self.slide_label.setText(text)
 
-    def goto_slide(self):
+    def goto_slide(self): #'goto' knop popup
         global p, annot3D
 
         cs, ok = QInputDialog.getText(self, "Go to slide", "Go to slide")
@@ -720,7 +728,7 @@ if __name__ == "__main__":
         app = QApplication.instance()
 
     app.setStyle('Fusion')
-    palette = QPalette()
+    palette = QPalette() #maak kleurenpallet
     palette.setColor(QPalette.Window, QColor(53, 53, 53))
     palette.setColor(QPalette.WindowText, Qt.white)
     palette.setColor(QPalette.Base, QColor(25, 25, 25))
@@ -738,4 +746,4 @@ if __name__ == "__main__":
 
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec()) # use .exec_() for Python 3.10.10

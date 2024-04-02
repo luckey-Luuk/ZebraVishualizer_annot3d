@@ -1,3 +1,4 @@
+#sommige functies gebruikt, uit annot3D
 import numpy as np
 import pickle
 import imageio
