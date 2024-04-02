@@ -1,9 +1,18 @@
-Keras
-Keras-Preprocessing
-matplotlib
-mayavi
 numpy
-Pillow
-PySide2
-tensorflow
-tqdm
+matplotlib
+Pillow # image editing
+imageio # dependency for PIL (Pillow)
+openpyxl
+
+##when using python 3.10(.10):
+#PySide2 # interface for mayavi
+# mayavi 3 # visualisation
+
+# when using newer versions of python (3.12.2):
+PySide6
+https://github.com/enthought/mayavi/zipball/master # mayavi (in development, may be unstable)
+
+
+## Optional:
+# vtk==2.9.6 # newer might not work with mayavi
+# tqdm # for progress bars in terminal
