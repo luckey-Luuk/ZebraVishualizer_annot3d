@@ -1,25 +1,19 @@
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QCoreApplication, QEvent, QSize, QMetaObject, Qt, SLOT, Slot
-from PySide6.QtGui import QBitmap, QColor, QCursor, QIcon, QImage, QKeySequence, QPainter, QPalette, QPixmap, QResizeEvent, QColor, QAction, QShortcut # move QAction and QShortcut to QtWidgets when using Python 3.10.10
-from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDateEdit, QDateTimeEdit, QDial, QDockWidget, QDoubleSpinBox, QFileDialog, QDialog, QFontComboBox, QGraphicsGridLayout, QGraphicsOpacityEffect, QHBoxLayout, QInputDialog, QLCDNumber, QLabel, QLineEdit, QMainWindow, QMenu, QProgressBar, QPushButton, QRadioButton, QScrollArea, QSizePolicy, QSlider, QSpinBox, QStatusBar, QTimeEdit, QToolBar, QGridLayout, QVBoxLayout, QWidget#, QAction, QShortcut
+from PySide6.QtCore import Qt#, QSize
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPalette, QPixmap, QColor, QAction#, QResizeEvent # move QAction to QtWidgets when using Python 3.10.10
+from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget#, QAction
 
 from traits.etsconfig.api import ETSConfig
 ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
 
-from traits.api import HasTraits, Instance, on_trait_change, Range
+from traits.api import HasTraits, Instance, on_trait_change
 from traitsui.api import View, Item
 from mayavi.core.ui.api import MayaviScene, MlabSceneModel, SceneEditor
 from mayavi import mlab
 
-import mayavi
 import numpy as np
-import os
-from PIL import Image, ImageQt
 from AnnotationSpace3D import AnnotationSpace3D
 import sys
-import matplotlib.pyplot as plt
 from helpers import read_tiff, create_image_dict, create_colour_array
-import asyncio
 from openpyxl import Workbook, load_workbook
 import math
 
@@ -276,9 +270,9 @@ class Visualization(HasTraits):
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
     
-    def update_annot(self): # update the scalar field and visualization auto updates #uit annot3D
-        npspace = annot3D.get_npspace()
-        self.npspace_sf.mlab_source.trait_set(scalars=npspace) 
+    # def update_annot(self): # update the scalar field and visualization auto updates #uit annot3D, lijkt overbodig
+    #     npspace = annot3D.get_npspace()
+    #     self.npspace_sf.mlab_source.trait_set(scalars=npspace)
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
@@ -297,48 +291,48 @@ class MayaviQWidget(QWidget): #mayavi raam
     def update_annot(self):
         self.visualization.update_annot()
 
-class QPaletteButton(QPushButton): #uit annot3D
-    def __init__(self, color):
-        super().__init__()
-        self.setFixedSize(QSize(24,24))
-        self.color = color
-        self.setStyleSheet("background-color: %s;" % color)
+# class QPaletteButton(QPushButton): #uit annot3D, lijkt overbodig
+#     def __init__(self, color):
+#         super().__init__()
+#         self.setFixedSize(QSize(24,24))
+#         self.color = color
+#         self.setStyleSheet("background-color: %s;" % color)
 
-class Label(QLabel): #uit annot3D
+# class Label(QLabel): #uit annot3D, lijkt overbodig
 
-    def __init__(self):
-        super(Label, self).__init__()
-        self.pixmap_width: int = 1
-        self.pixmapHeight: int = 1
+#     def __init__(self):
+#         super(Label, self).__init__()
+#         self.pixmap_width: int = 1
+#         self.pixmapHeight: int = 1
 
-    def setPixmap(self, pm: QPixmap) -> None:
-        self.pixmap_width = pm.width()
-        self.pixmapHeight = pm.height()
+#     def setPixmap(self, pm: QPixmap) -> None:
+#         self.pixmap_width = pm.width()
+#         self.pixmapHeight = pm.height()
 
-        self.updateMargins()
-        super(Label, self).setPixmap(pm)
+#         self.updateMargins()
+#         super(Label, self).setPixmap(pm)
 
-    def resizeEvent(self, a0: QResizeEvent) -> None:
-        self.updateMargins()
-        super(Label, self).resizeEvent(a0)
+#     def resizeEvent(self, a0: QResizeEvent) -> None:
+#         self.updateMargins()
+#         super(Label, self).resizeEvent(a0)
 
-    def updateMargins(self):
-        if self.pixmap() is None:
-            return
-        pixmapWidth = self.pixmap().width()
-        pixmapHeight = self.pixmap().height()
-        if pixmapWidth <= 0 or pixmapHeight <= 0:
-            return
-        w, h = self.width(), self.height()
-        if w <= 0 or h <= 0:
-            return
+#     def updateMargins(self):
+#         if self.pixmap() is None:
+#             return
+#         pixmapWidth = self.pixmap().width()
+#         pixmapHeight = self.pixmap().height()
+#         if pixmapWidth <= 0 or pixmapHeight <= 0:
+#             return
+#         w, h = self.width(), self.height()
+#         if w <= 0 or h <= 0:
+#             return
 
-        if w * pixmapHeight > h * pixmapWidth:
-            m = int((w - (pixmapWidth * h / pixmapHeight)) / 2)
-            self.setContentsMargins(m, 0, m, 0)
-        else:
-            m = int((h - (pixmapHeight * w / pixmapWidth)) / 2)
-            self.setContentsMargins(0, m, 0, m)
+#         if w * pixmapHeight > h * pixmapWidth:
+#             m = int((w - (pixmapWidth * h / pixmapHeight)) / 2)
+#             self.setContentsMargins(m, 0, m, 0)
+#         else:
+#             m = int((h - (pixmapHeight * w / pixmapWidth)) / 2)
+#             self.setContentsMargins(0, m, 0, m)
 
 class MainWindow(QMainWindow): #hele raam
     c = {'xy': 0, 'xz': 0, 'yz': 0}
@@ -350,7 +344,7 @@ class MainWindow(QMainWindow): #hele raam
     num_slides = 0
     npimages = -1
 
-    def load_source_file(self, filename): #uit annot3D
+    def load_source_file(self, filename): #uit annot3D, nodig
         global COLORS, p, current_slide, annot3D
 
         self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
@@ -386,10 +380,10 @@ class MainWindow(QMainWindow): #hele raam
         temp_dict=create_image_dict() #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
         self.load_source_file('data/'+temp_dict[0]) #load the first image in the dict
 
-        if len(sys.argv) == 2: #uit annot3D
-            global annot3D
-            print("Set server URL to", sys.argv[1])
-            annot3D.set_server_url(sys.argv[1])  
+        # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
+        #     global annot3D
+        #     print("Set server URL to", sys.argv[1])
+        #     annot3D.set_server_url(sys.argv[1])  
 
         w = QWidget()
         

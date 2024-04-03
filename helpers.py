@@ -62,19 +62,19 @@ def read_tiff(path): # returns tiff image stack as np array
     return xy, xz, yz
 
 
-def apply_contrast(npslice, f): #uit annot3D, aangepast. smoothte alles (ook tif puntjes), aangepast dat puntjes blijven
-    #minval = np.percentile(npslice, f) # vary threshold between 1st and 99th percentiles, when f=1
-    minval=0#the lowest value will always be zero
-    maxval = np.percentile(npslice, 101-f)#was 100-f is now 101-f
-    result = np.clip(npslice, minval, maxval)
-    #print(npslice[0][20])
-    if np.any(result)==True:
-        result = ((result - minval) / (maxval - minval)) * 1024
-    return (result).astype(np.short)
+# def apply_contrast(npslice, f): #uit annot3D, aangepast. smoothte alles (ook tif puntjes), aangepast dat puntjes blijven, lijkt overbodig
+#     #minval = np.percentile(npslice, f) # vary threshold between 1st and 99th percentiles, when f=1
+#     minval=0#the lowest value will always be zero
+#     maxval = np.percentile(npslice, 101-f)#was 100-f is now 101-f
+#     result = np.clip(npslice, minval, maxval)
+#     #print(npslice[0][20])
+#     if np.any(result)==True:
+#         result = ((result - minval) / (maxval - minval)) * 1024
+#     return (result).astype(np.short)
 
 
-def apply_brightness(npslice, f):
-    return (npslice*f).astype(np.short)
+# def apply_brightness(npslice, f): # lijkt overbodig
+#     return (npslice*f).astype(np.short)
 
 def create_image_dict(directory="data"):#returns dictonary of image file names
     file_list=[]
