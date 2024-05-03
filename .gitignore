@@ -8,3 +8,5 @@ kivy_venv
 exports
 *.npy
 extras
+
+.tijdelijk

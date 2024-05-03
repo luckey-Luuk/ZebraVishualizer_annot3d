@@ -2,8 +2,8 @@ from PySide6.QtCore import Qt#, QSize
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPalette, QPixmap, QColor, QAction#, QResizeEvent # move QAction to QtWidgets when using Python 3.10.10
 from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget#, QAction
 
-from traits.etsconfig.api import ETSConfig
-ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
+# from traits.etsconfig.api import ETSConfig
+# ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
 
 from traits.api import HasTraits, Instance, on_trait_change
 from traitsui.api import View, Item
@@ -85,7 +85,15 @@ class Visualization(HasTraits):
 
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
-        #mlab.orientation_axes()
+        # mlab.orientation_axes()
+
+        @mlab.animate(delay=100)
+        def anim():
+            while True:
+                self.update_volume('next')
+                yield
+        anim()
+        # mlab.show()
 
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
@@ -216,51 +224,6 @@ class Visualization(HasTraits):
             cordinates=picker.pick_position
             self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
-    def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
-        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
-        for i in range(len(self.image_dictionary)):
-            for j in range(self.amount_of_points):
-                if self.point_location_data[i][j][0] is not None:
-                    point_data_list.append([i,j,self.point_location_data[i][j][0],self.point_location_data[i][j][1],self.point_location_data[i][j][2]])
-
-        book=Workbook()
-        sheet=book.active
-        sheet.append(["timestep","dot","x","y","z"])
-        for row in point_data_list:
-            sheet.append(row)
-        book.save(file_name)
-
-    def export_data(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
-        x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
-        y_mod=new_y_size/self.y_lenght
-        z_mod=new_z_size/self.z_lenght
-        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
-        for i in range(len(self.image_dictionary)): #for every slice number
-            for j in range(self.amount_of_points): #for every tracking number
-                if self.point_location_data[i][j][0] is not None:
-                    x=self.point_location_data[i][j][0]*x_mod
-                    y=self.point_location_data[i][j][1]*y_mod
-                    z=self.point_location_data[i][j][2]*z_mod
-                    point_data_list.append([j,i,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
-        encounterd_points=[]
-        for i in range(len(point_data_list)):
-            for j in encounterd_points:
-                if point_data_list[i][0]==j[0] and point_data_list[i][1]==j[1]+1:
-                    encounterd_points.remove(j)
-                    x_exponent=math.pow(point_data_list[i][2]-j[2],2)
-                    y_exponent=math.pow(point_data_list[i][3]-j[3],2)
-                    z_exponent=math.pow(point_data_list[i][4]-j[4],2)
-                    point_data_list[i][5]=math.sqrt(x_exponent+y_exponent+z_exponent)
-                    break
-            encounterd_points.append(point_data_list[i])
-
-        book=Workbook()
-        sheet=book.active
-        sheet.append(["tracking number","slice number","x","y","z","Distance"])
-        for row in point_data_list:
-            sheet.append(row)
-        book.save(file_name)
-
     def load_data(self,file_name="test_file.xlsx"): #knop load annotations
         book=load_workbook(filename=file_name)
         sheet=book.active
@@ -269,10 +232,6 @@ class Visualization(HasTraits):
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
-    
-    # def update_annot(self): # update the scalar field and visualization auto updates #uit annot3D, lijkt overbodig
-    #     npspace = annot3D.get_npspace()
-    #     self.npspace_sf.mlab_source.trait_set(scalars=npspace)
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
@@ -291,50 +250,37 @@ class MayaviQWidget(QWidget): #mayavi raam
     def update_annot(self):
         self.visualization.update_annot()
 
-# class QPaletteButton(QPushButton): #uit annot3D, lijkt overbodig
-#     def __init__(self, color):
-#         super().__init__()
-#         self.setFixedSize(QSize(24,24))
-#         self.color = color
-#         self.setStyleSheet("background-color: %s;" % color)
-
-# class Label(QLabel): #uit annot3D, lijkt overbodig
-
-#     def __init__(self):
-#         super(Label, self).__init__()
-#         self.pixmap_width: int = 1
-#         self.pixmapHeight: int = 1
-
-#     def setPixmap(self, pm: QPixmap) -> None:
-#         self.pixmap_width = pm.width()
-#         self.pixmapHeight = pm.height()
-
-#         self.updateMargins()
-#         super(Label, self).setPixmap(pm)
-
-#     def resizeEvent(self, a0: QResizeEvent) -> None:
-#         self.updateMargins()
-#         super(Label, self).resizeEvent(a0)
-
-#     def updateMargins(self):
-#         if self.pixmap() is None:
-#             return
-#         pixmapWidth = self.pixmap().width()
-#         pixmapHeight = self.pixmap().height()
-#         if pixmapWidth <= 0 or pixmapHeight <= 0:
-#             return
-#         w, h = self.width(), self.height()
-#         if w <= 0 or h <= 0:
-#             return
-
-#         if w * pixmapHeight > h * pixmapWidth:
-#             m = int((w - (pixmapWidth * h / pixmapHeight)) / 2)
-#             self.setContentsMargins(m, 0, m, 0)
-#         else:
-#             m = int((h - (pixmapHeight * w / pixmapWidth)) / 2)
-#             self.setContentsMargins(0, m, 0, m)
-
 class MainWindow(QMainWindow): #hele raam
+    """The main window of the app, contains buttons and Mayavi window.
+
+    ...
+
+    Attributes
+    ----------
+    c : dict
+        explanation
+    dims : tuple
+        explanation
+    slides : dict
+        explanation
+    plane_depth : dict
+        explanation
+    slide_annotations : dict
+        explanation
+    num_slides : int
+        explanation
+    npimages : int
+        explanation
+
+    Methods
+    -------
+    load_source_file(filename):
+        explanation
+    setup_bar_actions():
+        explanation
+    load_annot_dialog():
+        explanation
+    """
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
     dims = (500, 500, 25) # w, h, d
@@ -345,6 +291,17 @@ class MainWindow(QMainWindow): #hele raam
     npimages = -1
 
     def load_source_file(self, filename): #uit annot3D, nodig
+        """Text.
+
+        Parameters
+        ----------
+        filename : ???
+            explanation
+
+        Returns
+        -------
+        None
+        """
         global COLORS, p, current_slide, annot3D
 
         self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
@@ -374,6 +331,17 @@ class MainWindow(QMainWindow): #hele raam
         }
 
     def __init__(self):
+        """Text.
+
+        Parameters
+        ----------
+        filename : ???
+            explanation
+
+        Returns
+        -------
+        None
+        """
         super().__init__()
         
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
@@ -716,13 +684,15 @@ class MainWindow(QMainWindow): #hele raam
         window.mayavi_widget.visualization.redraw_all_points()
 
 if __name__ == "__main__":
+    # open new instance of app if it is not running yet
     if not QApplication.instance():
         app = QApplication(sys.argv)
     else:
         app = QApplication.instance()
 
+    # set app style
     app.setStyle('Fusion')
-    palette = QPalette() #maak kleurenpallet
+    palette = QPalette()
     palette.setColor(QPalette.Window, QColor(53, 53, 53))
     palette.setColor(QPalette.WindowText, Qt.white)
     palette.setColor(QPalette.Base, QColor(25, 25, 25))
@@ -738,6 +708,7 @@ if __name__ == "__main__":
     palette.setColor(QPalette.HighlightedText, Qt.black)
     app.setPalette(palette)
 
+    # create main window and start app
     window = MainWindow()
     window.show()
     sys.exit(app.exec()) # use .exec_() for Python 3.10.10

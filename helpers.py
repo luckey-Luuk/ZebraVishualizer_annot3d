@@ -33,6 +33,22 @@ def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet me
 
 
 def read_tiff(path): # returns tiff image stack as np array
+    """Text.
+
+        Parameters
+        ----------
+        path : ???
+            explanation
+
+        Returns
+        -------
+        xy : ???
+            explanation
+        xz : ???
+            explanation
+        yz : ???
+            explanation
+        """
     img = Image.open(path)
     xy = []
     xz = []
