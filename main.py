@@ -139,14 +139,16 @@ class Visualization(HasTraits):
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
     def update_volume(self,next_or_previous='next'): #wisselen naar nieuwe slide
-        if next_or_previous=="next":
+        if next_or_previous=="next": #go to next slide
             if self.current_image_number==len(self.image_dictionary)-1:
-                return
-            self.current_image_number+=1
-        elif next_or_previous=="previous":
+                self.current_image_number=0 #loop around
+            else:
+                self.current_image_number+=1
+        elif next_or_previous=="previous": #go to previous slide
             if self.current_image_number==0:
-                return
-            self.current_image_number-=1
+                self.current_image_number=len(self.image_dictionary)-1 #loop around
+            else:
+                self.current_image_number-=1
         elif isinstance(next_or_previous,int): #used for goto function to go to a specific slide
             if len(self.image_dictionary)-1<next_or_previous:
                 self.current_image_number=len(self.image_dictionary)-1
