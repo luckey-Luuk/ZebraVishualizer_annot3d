@@ -32,6 +32,8 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
+delay = 100
+
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
     mask = pixmap.createMaskFromColor(QColor('black'), Qt.MaskOutColor)
@@ -87,12 +89,13 @@ class Visualization(HasTraits):
         self.scene.background = (0.1, 0.1, 0.1)  
         # mlab.orientation_axes()
 
-        @mlab.animate(delay=100)
-        def anim():
-            while True:
-                self.update_volume('next')
-                yield
-        anim()
+        # global delay
+        # @mlab.animate(delay=delay)
+        # def anim():
+        #     while True:
+        #         self.update_volume('next')
+        #         yield
+        # anim()
         # mlab.show()
 
 
@@ -379,6 +382,8 @@ class MainWindow(QMainWindow): #hele raam
         self.mayavi_widget = MayaviQWidget(container)
         self.rdock.setWidget(self.mayavi_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
+
+        self.animate()
     
     # GENERAL WINDOW PROPS
         self.setWindowTitle("Cell Annotation")
@@ -684,6 +689,15 @@ class MainWindow(QMainWindow): #hele raam
         new_size=self.sphere_size_slider.value()
         window.mayavi_widget.visualization.sphere_size=new_size
         window.mayavi_widget.visualization.redraw_all_points()
+
+    def animate(self):
+        global delay
+        @mlab.animate(delay=delay)
+        def anim():
+            while True:
+                self.change_volume_model_next()
+                yield
+        anim()
 
 if __name__ == "__main__":
     # open new instance of app if it is not running yet
