@@ -32,7 +32,8 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
-delay = 100
+delay = 10
+previous_delay = 100
 
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
@@ -467,6 +468,11 @@ class MainWindow(QMainWindow): #hele raam
         selection_box.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(selection_box,0,2)
 
+        PlayPauseButton = QPushButton('Play/Pause')
+        PlayPauseButton.clicked.connect(self.toggle_playpause)
+        PlayPauseButton.setMinimumSize(50,50)
+        sub_canvas_functions_layout.addWidget(PlayPauseButton,0,5)
+
         ChangeVolumeNextButton = QPushButton('>')
         ChangeVolumeNextButton.clicked.connect(self.change_volume_model_next)
         ChangeVolumeNextButton.setMinimumSize(50,50)
@@ -698,6 +704,14 @@ class MainWindow(QMainWindow): #hele raam
                 self.change_volume_model_next()
                 yield
         anim()
+    
+    def toggle_playpause(self):
+        global previous_delay
+        if delay==10:
+            delay=previous_delay
+        else:
+            previous_delay=delay
+            delay=10
 
 if __name__ == "__main__":
     # open new instance of app if it is not running yet
