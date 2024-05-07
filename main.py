@@ -32,6 +32,9 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
+directory = 'data_annot3d/' #folder containing tif files
+# directory = 'data_Zebravishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
+
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
     mask = pixmap.createMaskFromColor(QColor('black'), Qt.MaskOutColor)
@@ -46,8 +49,8 @@ class Visualization(HasTraits):
     
 
     def update_plot(self): #initializatie
-
-        self.image_dictionary=create_image_dict()
+        global directory
+        self.image_dictionary=create_image_dict(directory)
         self.current_image_number=0
         self.current_point_index=0
         self.transparancy=1.0
@@ -155,7 +158,8 @@ class Visualization(HasTraits):
                 self.current_image_number=len(self.image_dictionary)-1
             else:
                 self.current_image_number=next_or_previous
-        window.load_source_file('data/'+self.image_dictionary[self.current_image_number])
+        global directory
+        window.load_source_file(directory+'/'+self.image_dictionary[self.current_image_number])
         npimages = annot3D.get_npimages()
         if self.volume is not None:
             self.volume.remove()
@@ -348,8 +352,9 @@ class MainWindow(QMainWindow): #hele raam
         super().__init__()
         
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
-        temp_dict=create_image_dict() #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
-        self.load_source_file('data/'+temp_dict[0]) #load the first image in the dict
+        global directory
+        temp_dict=create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
+        self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
 
         # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
         #     global annot3D
@@ -422,7 +427,7 @@ class MainWindow(QMainWindow): #hele raam
         self.z_label = QLabel('Z')
         self.z_label.setMinimumSize(50,50)
 
-        self.slide_label = QLabel('slide 1/'+str(len(create_image_dict()))) #number of current slide modified when switching
+        self.slide_label = QLabel('slide 1/'+str(len(create_image_dict(directory)))) #number of current slide modified when switching
         self.slide_label.setMinimumSize(50,50)
         sub_canvas_slide_and_selector_layout.addWidget(self.slide_label,0,3)
 

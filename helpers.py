@@ -32,7 +32,7 @@ def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet me
 
 
 
-def read_tiff(path): # returns tiff image stack as np array
+def read_tiff(path='data/'): # returns tiff image stack as np array
     """Text.
 
         Parameters
@@ -55,7 +55,7 @@ def read_tiff(path): # returns tiff image stack as np array
     yz = []
 
     for i in range(img.n_frames): #x-y plane
-        img.seek(i)  
+        img.seek(i)
         
         new_img=img.convert('L')
         #filters om het er anders uit te laten zien
@@ -96,7 +96,7 @@ def create_image_dict(directory="data"):#returns dictonary of image file names
     file_list=[]
     for file in os.listdir(directory):
         if file.endswith('.tif'):
-            if '++' in file:
+            if '++' in file or '--' in file:
                 file_list.append(file)
     
     file_list=sorted(file_list)
