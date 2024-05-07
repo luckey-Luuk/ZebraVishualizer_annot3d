@@ -9,4 +9,6 @@ exports
 *.npy
 extras
 
+~$*.xlsx
+
 .tijdelijk

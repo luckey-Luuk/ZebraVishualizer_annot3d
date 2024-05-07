@@ -32,8 +32,8 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
-directory = 'data_annot3d/' #folder containing tif files
-# directory = 'data_Zebravishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
+# directory = 'data_annot3d/' #folder containing tif files
+directory = 'data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
 
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
