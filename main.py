@@ -180,17 +180,17 @@ class Visualization(HasTraits):
     def draw_results(self): #tekent trajectory
         for i in range(len(self.point_location_data)):
             if self.point_location_data[i][self.current_point_index][0] is not None: #check if point exists #teken punt
-                x_cordinate=self.point_location_data[i][self.current_point_index][0]
-                y_cordinate=self.point_location_data[i][self.current_point_index][1]
-                z_cordinate=self.point_location_data[i][self.current_point_index][2]
-                self.mayavi_result_dots[i]=mlab.points3d(x_cordinate,y_cordinate,z_cordinate,color=self.colour_array[self.current_point_index],scale_factor=3)
+                x_coordinate=self.point_location_data[i][self.current_point_index][0]
+                y_coordinate=self.point_location_data[i][self.current_point_index][1]
+                z_coordinate=self.point_location_data[i][self.current_point_index][2]
+                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[self.current_point_index],scale_factor=3)
 
 
                 if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
-                    x_cordinates=[self.point_location_data[i-1][self.current_point_index][0],x_cordinate]
-                    y_cordinates=[self.point_location_data[i-1][self.current_point_index][1],y_cordinate]
-                    z_cordinates=[self.point_location_data[i-1][self.current_point_index][2],z_cordinate]
-                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_cordinates,y_cordinates,z_cordinates,color=(0,0.9,0),tube_radius=1)
+                    x_coordinates=[self.point_location_data[i-1][self.current_point_index][0],x_coordinate]
+                    y_coordinates=[self.point_location_data[i-1][self.current_point_index][1],y_coordinate]
+                    z_coordinates=[self.point_location_data[i-1][self.current_point_index][2],z_coordinate]
+                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[self.current_point_index],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
 
     def remove_results(self): #stop met trajectory visualiseren
         for i in range(len(self.mayavi_result_dots)):
@@ -239,6 +239,9 @@ class Visualization(HasTraits):
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
+    
+    # def load_pkl(self,file_name="test_file.pkl"):
+
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
@@ -627,6 +630,16 @@ class MainWindow(QMainWindow): #hele raam
             window.mayavi_widget.visualization.redraw_all_points()
             if window.mayavi_widget.visualization.showResults==True:
                 window.mayavi_widget.visualization.change_result()
+    
+    def load_pkl_dialog(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.pkl")
+        
+        if fname:
+            window.mayavi_widget.visualization.load_pkl(fname)
+            # window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
+            # window.mayavi_widget.visualization.redraw_all_points()
+            # if window.mayavi_widget.visualization.showResults==True:
+                # window.mayavi_widget.visualization.change_result()
             
 
     #wat alle knoppen doen
