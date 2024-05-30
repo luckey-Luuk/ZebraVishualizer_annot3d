@@ -3,6 +3,7 @@ matplotlib
 Pillow # image editing
 imageio # dependency for PIL (Pillow)
 openpyxl
+pickle # read pkl
 
 ##when using python 3.10.10:
 #PySide2 # interface for mayavi

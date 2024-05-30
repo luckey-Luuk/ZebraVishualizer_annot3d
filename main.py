@@ -16,6 +16,7 @@ import sys
 from helpers import read_tiff, create_image_dict, create_colour_array
 from openpyxl import Workbook, load_workbook
 import math
+import pickle
 
 COLORS = {
     '#ff0000': [255, 0, 0, 255],
@@ -32,8 +33,8 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
-# directory = 'data_annot3d/' #folder containing tif files
-directory = 'data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
+# directory = 'data/data_annot3d/20190621++2' #folder containing tif files
+directory = 'data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
 
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
@@ -291,7 +292,8 @@ class MainWindow(QMainWindow): #hele raam
     num_slides = 0
     npimages = -1
 
-    pkl = None
+    pkl_dict = None
+
 
     def load_tif_dialog(self):
         dname = QFileDialog.getExistingDirectory(self, 'Select folder containing .tif files')
@@ -299,15 +301,14 @@ class MainWindow(QMainWindow): #hele raam
         if dname:
             global directory
             directory = dname
-            print(directory)
         # else:
-        #     sys.exit(app.exec()) # use .exec_() for Python 3.10.10
+        #     sys.exit()
 
     def load_pkl_dialog(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file', '.',filter="*.pkl")
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file (optional)', '.',filter="*.pkl")
 
-        # if fname:
-            # pkl = fname
+        if fname:
+            self.pkl_dict = pickle.load(open(fname, 'rb'))
 
     def load_annot_dialog(self): #beschrijving 'load annotations functie'
         fname, _ = QFileDialog.getOpenFileName(self, 'Select .xlsx annotations file', '.',filter="*.xlsx")
@@ -376,7 +377,7 @@ class MainWindow(QMainWindow): #hele raam
         
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
         self.load_tif_dialog()
-        # self.load_pkl_dialog()
+        self.load_pkl_dialog()
         # if not self.pkl:
         #     self.load_annot_dialog()
 
