@@ -42,6 +42,7 @@ def get_filled_pixmap(pixmap_file):
     pixmap.setMask(mask)
     return pixmap
 
+
 class Visualization(HasTraits):
     scene = Instance(MlabSceneModel, ())
 
@@ -89,16 +90,6 @@ class Visualization(HasTraits):
         segmask = mlab.pipeline.iso_surface(self.npspace_sf, color=(1.0, 0.0, 0.0))
         self.scene.background = (0.1, 0.1, 0.1)  
         # mlab.orientation_axes()
-
-        # global delay
-        # @mlab.animate(delay=delay)
-        # def anim():
-        #     while True:
-        #         self.update_volume('next')
-        #         yield
-        # anim()
-        # mlab.show()
-
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
         #update point data
@@ -300,6 +291,35 @@ class MainWindow(QMainWindow): #hele raam
     num_slides = 0
     npimages = -1
 
+    pkl = None
+
+    def load_tif_dialog(self):
+        dname = QFileDialog.getExistingDirectory(self, 'Select folder containing .tif files')
+
+        if dname:
+            global directory
+            directory = dname
+            print(directory)
+        # else:
+        #     sys.exit(app.exec()) # use .exec_() for Python 3.10.10
+
+    def load_pkl_dialog(self):
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file', '.',filter="*.pkl")
+
+        # if fname:
+            # pkl = fname
+
+    def load_annot_dialog(self): #beschrijving 'load annotations functie'
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select .xlsx annotations file', '.',filter="*.xlsx")
+
+        #global annot3D, current_slide
+        if fname:
+            window.mayavi_widget.visualization.load_data(fname)
+            window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
+            window.mayavi_widget.visualization.redraw_all_points()
+            if window.mayavi_widget.visualization.showResults==True:
+                window.mayavi_widget.visualization.change_result()
+
     def load_source_file(self, filename): #uit annot3D, nodig
         """Text.
 
@@ -355,6 +375,11 @@ class MainWindow(QMainWindow): #hele raam
         super().__init__()
         
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
+        self.load_tif_dialog()
+        # self.load_pkl_dialog()
+        # if not self.pkl:
+        #     self.load_annot_dialog()
+
         global directory
         temp_dict=create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
         self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
@@ -620,28 +645,6 @@ class MainWindow(QMainWindow): #hele raam
         fileMenu.addAction(exportAction)
         fileMenu.addAction(exitAction)
 
-    def load_annot_dialog(self): #beschrijving 'load annotations functie'
-        fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.xlsx")
-
-        #global annot3D, current_slide
-        if fname:
-            window.mayavi_widget.visualization.load_data(fname)
-            window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
-            window.mayavi_widget.visualization.redraw_all_points()
-            if window.mayavi_widget.visualization.showResults==True:
-                window.mayavi_widget.visualization.change_result()
-    
-    def load_pkl_dialog(self):
-        fname, _ = QFileDialog.getOpenFileName(self, 'Load annotations file', '.',filter="*.pkl")
-        
-        if fname:
-            window.mayavi_widget.visualization.load_pkl(fname)
-            # window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
-            # window.mayavi_widget.visualization.redraw_all_points()
-            # if window.mayavi_widget.visualization.showResults==True:
-                # window.mayavi_widget.visualization.change_result()
-            
-
     #wat alle knoppen doen
     #dialoog windows voor save en export
     def save_annots_dialog(self):
@@ -713,6 +716,7 @@ class MainWindow(QMainWindow): #hele raam
                 self.change_volume_model_next()
                 yield
         anim()
+
 
 if __name__ == "__main__":
     # open new instance of app if it is not running yet
