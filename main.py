@@ -223,6 +223,51 @@ class Visualization(HasTraits):
             cordinates=picker.pick_position
             self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
+    def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
+        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+        for i in range(len(self.image_dictionary)):
+            for j in range(self.amount_of_points):
+                if self.point_location_data[i][j][0] is not None:
+                    point_data_list.append([i,j,self.point_location_data[i][j][0],self.point_location_data[i][j][1],self.point_location_data[i][j][2]])
+
+        book=Workbook()
+        sheet=book.active
+        sheet.append(["timestep","dot","x","y","z"])
+        for row in point_data_list:
+            sheet.append(row)
+        book.save(file_name)
+
+    def export_data(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
+        x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
+        y_mod=new_y_size/self.y_lenght
+        z_mod=new_z_size/self.z_lenght
+        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+        for i in range(len(self.image_dictionary)): #for every slice number
+            for j in range(self.amount_of_points): #for every tracking number
+                if self.point_location_data[i][j][0] is not None:
+                    x=self.point_location_data[i][j][0]*x_mod
+                    y=self.point_location_data[i][j][1]*y_mod
+                    z=self.point_location_data[i][j][2]*z_mod
+                    point_data_list.append([j,i,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
+        encounterd_points=[]
+        for i in range(len(point_data_list)):
+            for j in encounterd_points:
+                if point_data_list[i][0]==j[0] and point_data_list[i][1]==j[1]+1:
+                    encounterd_points.remove(j)
+                    x_exponent=math.pow(point_data_list[i][2]-j[2],2)
+                    y_exponent=math.pow(point_data_list[i][3]-j[3],2)
+                    z_exponent=math.pow(point_data_list[i][4]-j[4],2)
+                    point_data_list[i][5]=math.sqrt(x_exponent+y_exponent+z_exponent)
+                    break
+            encounterd_points.append(point_data_list[i])
+
+        book=Workbook()
+        sheet=book.active
+        sheet.append(["tracking number","slice number","x","y","z","Distance"])
+        for row in point_data_list:
+            sheet.append(row)
+        book.save(file_name)
+
     def load_data(self,file_name="test_file.xlsx"): #knop load annotations
         book=load_workbook(filename=file_name)
         sheet=book.active
@@ -383,6 +428,7 @@ class MainWindow(QMainWindow): #hele raam
 
         global directory
         temp_dict=create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
+        
         self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
 
         # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
@@ -655,7 +701,7 @@ class MainWindow(QMainWindow): #hele raam
             window.mayavi_widget.visualization.save_data(fname)  
 
     def export_dialog(self):
-        outcome=self.popup.exec_()
+        outcome=self.popup.exec() # use .exec_() for Python 3.10.10
         if outcome==0: #don't do rest of function if cancel button has been pressed
             return
         x_size=self.x_input.value()
