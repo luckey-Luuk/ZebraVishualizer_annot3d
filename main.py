@@ -13,7 +13,7 @@ from mayavi import mlab
 import numpy as np
 from AnnotationSpace3D import AnnotationSpace3D
 import sys
-from helpers import read_tiff, create_image_dict, create_colour_array
+from helpers import get_cell_centers, read_tiff, create_image_dict, create_colour_array
 from openpyxl import Workbook, load_workbook
 import math
 import pickle
@@ -35,6 +35,7 @@ w, h, d = 500, 500, 25
 
 # directory = 'data/data_annot3d/20190621++2' #folder containing tif files
 directory = 'data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/'
+
 
 def get_filled_pixmap(pixmap_file):
     pixmap = QPixmap(pixmap_file)
@@ -63,7 +64,8 @@ class Visualization(HasTraits):
         self.amount_of_points=20
         self.colour_array=create_colour_array()
         
-        self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
+        global pkl_point_location_data
+        self.point_location_data=[[[None]*4 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
         
         self.mayavi_result_dots=[None for i in range(len(self.image_dictionary))] #for mayvi to store points for the display view
 
@@ -277,7 +279,20 @@ class Visualization(HasTraits):
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
     
-    # def load_pkl(self,file_name="test_file.pkl"):
+    # def get_pkl_annot(self, pkl_dict): #TODO: maak get_cell_centers functie en vergelijk met pkl_dict
+    #     for i in len(self.image_dictionary):
+    #         cell_centers = get_cell_centers(directory+'/'+self.image_dictionary[i])
+    #         # new_cell_centers = [[None]*3 for i in range(self.amount_of_points)]
+
+    #         if i > 0:
+    #             for c in cell_centers:
+    #                 # vergelijk celnummer met pkl_dict en pas aan
+    #                 # new_cell_centers = 
+
+    #         for j in self.amount_of_points:
+    #             self.point_location_data[i][j][0] = new_cell_centers[j][0]
+    #             self.point_location_data[i][j][1] = new_cell_centers[j][1]
+    #             self.point_location_data[i][j][2] = new_cell_centers[j][2]
 
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
@@ -340,7 +355,7 @@ class MainWindow(QMainWindow): #hele raam
     pkl_dict = None
 
 
-    def load_tif_dialog(self):
+    def load_tiff_dialog(self):
         dname = QFileDialog.getExistingDirectory(self, 'Select folder containing .tif files')
 
         if dname:
@@ -421,14 +436,13 @@ class MainWindow(QMainWindow): #hele raam
         super().__init__()
         
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
-        self.load_tif_dialog()
+        self.load_tiff_dialog()
         self.load_pkl_dialog()
         # if not self.pkl:
         #     self.load_annot_dialog()
 
         global directory
         temp_dict=create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
-        
         self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
 
         # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
@@ -460,6 +474,9 @@ class MainWindow(QMainWindow): #hele raam
         self.mayavi_widget = MayaviQWidget(container)
         self.rdock.setWidget(self.mayavi_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
+
+        if self.pkl_dict:
+            self.mayavi_widget.visualization.get_pkl_annot(self.pkl_dict)
 
         self.animate()
     

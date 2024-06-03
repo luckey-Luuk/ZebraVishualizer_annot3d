@@ -1,6 +1,7 @@
 numpy
 matplotlib
 Pillow # image editing
+scikit-image # image processing
 imageio # dependency for PIL (Pillow)
 openpyxl
 pickle # read pkl

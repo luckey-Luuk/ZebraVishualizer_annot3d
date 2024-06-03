@@ -2,6 +2,9 @@ from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 import os
 
+from skimage import io
+from skimage.measure import regionprops
+
 # from skimage draw
 def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet meer gebruikt
   radii = np.array([radius, radius])
@@ -30,7 +33,15 @@ def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet me
 
   return rr, cc
 
-
+def find_centroids(path='data/'):
+    img = io.imread(path, plugin='pil')
+    region = regionprops(img)
+    
+    centroids = {}
+    for props in region:
+        centroids[props.label] = props.centroid
+    
+    return centroids
 
 def read_tiff(path='data/'): # returns tiff image stack as np array
     """Text.
@@ -75,6 +86,9 @@ def read_tiff(path='data/'): # returns tiff image stack as np array
     for npimg in np.swapaxes(xy, 0, 2): # x with y, y-z plane
         yz.append(npimg)
 
+    # print(img)
+    # print(new_img)
+    # print(contrast_img)
     return xy, xz, yz
 
 
@@ -141,3 +155,7 @@ def create_colour_array(custom_list=None): #returns a colour pallet
 #print(test_array)
 #test_array=np.array(test_array)*0.5
 #print(np.amax(test_array))
+
+# print(read_tiff('data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/20190701--20000_M3a_Step92.tif'))
+
+find_centroids('data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/20190701--20000_M3a_Step92.tif')
