@@ -33,7 +33,7 @@ def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet me
 
   return rr, cc
 
-def find_centroids(path='data/'):
+def find_centroids(path='data/'): #TODO: check if image is labeled
     img = io.imread(path, plugin='pil')
     region = regionprops(img)
     
@@ -158,4 +158,4 @@ def create_colour_array(custom_list=None): #returns a colour pallet
 
 # print(read_tiff('data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/20190701--20000_M3a_Step92.tif'))
 
-find_centroids('data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/20190701--20000_M3a_Step92.tif')
+# print(find_centroids('data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a/20190701--20000_M3a_Step92.tif'))
