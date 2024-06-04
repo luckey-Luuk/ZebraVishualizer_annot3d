@@ -64,7 +64,7 @@ class Visualization(HasTraits):
         self.showResults=False
 
         self.amount_of_points=20 #TODO: make more dynamic
-        self.colour_array=create_colour_array()
+        self.colour_array=create_colour_array() #TODO: get infinite colours
         
         self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
         
@@ -72,7 +72,7 @@ class Visualization(HasTraits):
 
         self.mayavi_result_lines=[None for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
 
-        self.mayavi_dots=[None for i in range(self.amount_of_points)]#location for mayavi to store individual dots
+        self.mayavi_dots=[None for p in range(self.amount_of_points)]#location for mayavi to store individual dots
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
@@ -121,16 +121,16 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index]=None
 
     def delete_all_points(self):
-        for i in range(self.amount_of_points):
-            if self.mayavi_dots[i] is not None:
-                self.mayavi_dots[i].remove()
-                self.mayavi_dots[i]=None
+        for p in range(self.amount_of_points):
+            if self.mayavi_dots[p] is not None:
+                self.mayavi_dots[p].remove()
+                self.mayavi_dots[p]=None
 
     def redraw_all_points(self): #redraws all points, used to update points for the next timestep
         self.delete_all_points()
-        for i in range(self.amount_of_points):
-            if self.point_location_data[self.current_image_number][i][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[i]=mlab.points3d(self.point_location_data[self.current_image_number][i][0],self.point_location_data[self.current_image_number][i][1],self.point_location_data[self.current_image_number][i][2],color=self.colour_array[i],scale_factor=self.sphere_size)
+        for p in range(self.amount_of_points):
+            if self.point_location_data[self.current_image_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
+                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_array[p],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
@@ -295,6 +295,7 @@ class Visualization(HasTraits):
         
         self.amount_of_points = len(pkl_dict)
         self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)]
+        self.mayavi_dots=[None for p in range(self.amount_of_points)]
         for f in range(self.amount_of_frames):
             for p in range(self.amount_of_points):
                 if f in linked_centroids[p]:
@@ -372,7 +373,7 @@ class MainWindow(QMainWindow): #hele raam
         # else:
         #     sys.exit()
 
-    def load_annot_dialog(self): #TODO: check if .pkl is compatible with .tif
+    def load_annot_dialog(self, setup=False): #TODO: check if .pkl is compatible with .tif
         fname, _ = QFileDialog.getOpenFileName(self, 'Select file containing annotations (optional)', '.', filter="(*.pkl *.xlsx)")
 
         if fname.endswith('.pkl'):
@@ -384,11 +385,12 @@ class MainWindow(QMainWindow): #hele raam
         else:
             return
 
-        if 'window' in globals(): #TODO: verzin een manier om dit beter te doen
+        if not setup: #TODO: verzin een manier om dit beter te doen
             window.mayavi_widget.visualization.update_volume()
             window.mayavi_widget.visualization.redraw_all_points()
             if window.mayavi_widget.visualization.showResults==True:
                 window.mayavi_widget.visualization.change_result()
+        return
 
     #gemerged in load_annot_dialog
     # def load_pkl_dialog(self): #TODO: check if .pkl is compatible with .tif
@@ -506,10 +508,7 @@ class MainWindow(QMainWindow): #hele raam
         self.rdock.setWidget(self.mayavi_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
 
-        self.load_annot_dialog()
-        # self.load_pkl_dialog()
-        # if not self.pkl_dict:
-        #     self.load_annot_dialog()
+        self.load_annot_dialog(True)
 
         self.animate()
     

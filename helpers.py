@@ -129,7 +129,7 @@ def create_image_dict(directory="data"):#returns dictonary of image file names
         file_dict[i]=file_list[i]
     return file_dict
 
-def create_colour_array(custom_list=None): #returns a colour pallet
+def create_colour_array(custom_list=None): #returns a colour pallet TODO: make infinite colours
     if custom_list==None:
         red=(230, 25, 75)
         yellow=(255, 225, 25)
