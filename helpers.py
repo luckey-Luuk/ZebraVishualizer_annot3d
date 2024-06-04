@@ -4,6 +4,7 @@ import os
 
 from skimage import io
 from skimage.measure import regionprops
+from skimage.segmentation import clear_border
 
 # from skimage draw
 def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet meer gebruikt
@@ -35,6 +36,15 @@ def disk(center, radius, *, shape=None): #uit annot3D, voor tekenen, wss niet me
 
 def find_centroids(path='data/'): #TODO: check if image is labeled
     img = io.imread(path, plugin='pil')
+
+    # padded = np.pad(
+    # img,
+    # ((1, 1), (0, 0), (0, 0)),
+    # mode='constant',
+    # constant_values=0,
+    # )
+    # img = clear_border(padded)[1:-1]
+
     region = regionprops(img)
     
     centroids = {}

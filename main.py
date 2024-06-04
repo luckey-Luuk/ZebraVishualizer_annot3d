@@ -55,6 +55,7 @@ class Visualization(HasTraits):
     def update_plot(self): #initializatie
         global directory
         self.image_dictionary=create_image_dict(directory)
+        self.amount_of_frames=len(self.image_dictionary)
         self.current_image_number=0
         self.current_point_index=0
         self.transparancy=1.0
@@ -62,15 +63,14 @@ class Visualization(HasTraits):
         self.showVolume=True
         self.showResults=False
 
-        self.amount_of_points=20
+        self.amount_of_points=20 #TODO: make more dynamic
         self.colour_array=create_colour_array()
         
-        global pkl_point_location_data
-        self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #information of point locations in every time step
+        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
         
-        self.mayavi_result_dots=[None for i in range(len(self.image_dictionary))] #for mayvi to store points for the display view
+        self.mayavi_result_dots=[None for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
 
-        self.mayavi_result_lines=[None for i in range(len(self.image_dictionary)-1)] #for mayavi to store lines for the display view
+        self.mayavi_result_lines=[None for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
 
         self.mayavi_dots=[None for i in range(self.amount_of_points)]#location for mayavi to store individual dots
 
@@ -139,18 +139,18 @@ class Visualization(HasTraits):
 
     def update_volume(self,next_or_previous='next'): #wisselen naar nieuwe slide
         if next_or_previous=="next": #go to next slide
-            if self.current_image_number==len(self.image_dictionary)-1:
+            if self.current_image_number==self.amount_of_frames-1:
                 self.current_image_number=0 #loop around
             else:
                 self.current_image_number+=1
         elif next_or_previous=="previous": #go to previous slide
             if self.current_image_number==0:
-                self.current_image_number=len(self.image_dictionary)-1 #loop around
+                self.current_image_number=self.amount_of_frames-1 #loop around
             else:
                 self.current_image_number-=1
         elif isinstance(next_or_previous,int): #used for goto function to go to a specific slide
-            if len(self.image_dictionary)-1<next_or_previous:
-                self.current_image_number=len(self.image_dictionary)-1
+            if self.amount_of_frames-1<next_or_previous:
+                self.current_image_number=self.amount_of_frames-1
             else:
                 self.current_image_number=next_or_previous
         global directory
@@ -228,10 +228,10 @@ class Visualization(HasTraits):
 
     def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
-        for i in range(len(self.image_dictionary)):
-            for j in range(self.amount_of_points):
-                if self.point_location_data[i][j][0] is not None:
-                    point_data_list.append([i,j,self.point_location_data[i][j][0],self.point_location_data[i][j][1],self.point_location_data[i][j][2]])
+        for f in range(self.amount_of_frames):
+            for p in range(self.amount_of_points):
+                if self.point_location_data[f][p][0] is not None:
+                    point_data_list.append([f,p,self.point_location_data[f][p][0],self.point_location_data[f][p][1],self.point_location_data[f][p][2]])
 
         book=Workbook()
         sheet=book.active
@@ -245,13 +245,13 @@ class Visualization(HasTraits):
         y_mod=new_y_size/self.y_lenght
         z_mod=new_z_size/self.z_lenght
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
-        for i in range(len(self.image_dictionary)): #for every slice number
-            for j in range(self.amount_of_points): #for every tracking number
-                if self.point_location_data[i][j][0] is not None:
-                    x=self.point_location_data[i][j][0]*x_mod
-                    y=self.point_location_data[i][j][1]*y_mod
-                    z=self.point_location_data[i][j][2]*z_mod
-                    point_data_list.append([j,i,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
+        for f in range(self.amount_of_frames): #for every slice number
+            for p in range(self.amount_of_points): #for every tracking number
+                if self.point_location_data[f][p][0] is not None:
+                    x=self.point_location_data[f][p][0]*x_mod
+                    y=self.point_location_data[f][p][1]*y_mod
+                    z=self.point_location_data[f][p][2]*z_mod
+                    point_data_list.append([p,f,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
         encounterd_points=[]
         for i in range(len(point_data_list)):
             for j in encounterd_points:
@@ -271,36 +271,36 @@ class Visualization(HasTraits):
             sheet.append(row)
         book.save(file_name)
 
-    def load_data(self,file_name="test_file.xlsx"): #knop load annotations
+    def load_xlsx(self,file_name="test_file.xlsx"): #knop load annotations TODO: change self.amount_of_points to max value in dot column
         book=load_workbook(filename=file_name)
         sheet=book.active
-        self.point_location_data=[[[None]*3 for i in range(self.amount_of_points)]for j in range(len(self.image_dictionary))] #set data back to None to remove old data
+        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #set data back to None to remove old data
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
         self.redraw_all_points()
     
-    def get_pkl_annot(self, pkl_dict):
+    def load_pkl(self, pkl_dict):
         centroids = {}
-        for i in range(len(self.image_dictionary)):
-            centroids[i] = find_centroids(directory+'/'+self.image_dictionary[i])
+        for f in range(self.amount_of_frames):
+            centroids[f] = find_centroids(directory+'/'+self.image_dictionary[f])
 
         linked_centroids = {}
         for trajectory in pkl_dict:
             new_link = {}
             for link in trajectory:
-                (curr_label, frame, prev_label) = link
-                new_link[frame] = centroids[frame][curr_label]
+                (curr_label, f, prev_label) = link
+                new_link[f] = centroids[f][curr_label]
             linked_centroids[pkl_dict.index(trajectory)] = new_link
         
-        # np.swapaxes(linked_centroids, 0, 1)
-        # self.point_location_data = linked_centroids
-        for i in range(len(self.image_dictionary)):
-            for j in range(self.amount_of_points):
-                if i in linked_centroids[j]:
-                    self.point_location_data[i][j][0] = linked_centroids[j][i][0]
-                    self.point_location_data[i][j][1] = linked_centroids[j][i][1]
-                    self.point_location_data[i][j][2] = linked_centroids[j][i][2]
+        self.amount_of_points = len(pkl_dict)
+        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)]
+        for f in range(self.amount_of_frames):
+            for p in range(self.amount_of_points):
+                if f in linked_centroids[p]:
+                    self.point_location_data[f][p][0] = linked_centroids[p][f][0]
+                    self.point_location_data[f][p][1] = linked_centroids[p][f][1]
+                    self.point_location_data[f][p][2] = linked_centroids[p][f][2]
 
 
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
@@ -372,20 +372,44 @@ class MainWindow(QMainWindow): #hele raam
         # else:
         #     sys.exit()
 
-    def load_pkl_dialog(self): #TODO: check if .pkl is compatible with .tif
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file (optional)', '.',filter="*.pkl")
+    def load_annot_dialog(self): #TODO: check if .pkl is compatible with .tif
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select file containing annotations (optional)', '.', filter="(*.pkl *.xlsx)")
 
-        if fname:
+        if fname.endswith('.pkl'):
             key = directory.split('/')[-1].split('_')[0]
             self.pkl_dict = pickle.load(open(fname, 'rb'))[key]
-            self.mayavi_widget.visualization.get_pkl_annot(self.pkl_dict)
+            self.mayavi_widget.visualization.load_pkl(self.pkl_dict)
+        elif fname.endswith('.xlsx'):
+            self.mayavi_widget.visualization.load_xlsx(fname)
+        else:
+            return
 
-    def load_annot_dialog(self): #beschrijving 'load annotations functie'
+        if 'window' in globals(): #TODO: verzin een manier om dit beter te doen
+            window.mayavi_widget.visualization.update_volume()
+            window.mayavi_widget.visualization.redraw_all_points()
+            if window.mayavi_widget.visualization.showResults==True:
+                window.mayavi_widget.visualization.change_result()
+
+    #gemerged in load_annot_dialog
+    # def load_pkl_dialog(self): #TODO: check if .pkl is compatible with .tif
+    #     fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file (optional)', '.',filter="*.pkl")
+
+    #     if fname:
+    #         key = directory.split('/')[-1].split('_')[0]
+    #         self.pkl_dict = pickle.load(open(fname, 'rb'))[key]
+    #         self.mayavi_widget.visualization.load_pkl(self.pkl_dict)
+
+    #         window.mayavi_widget.visualization.update_volume()
+    #         window.mayavi_widget.visualization.redraw_all_points()
+    #         if window.mayavi_widget.visualization.showResults==True:
+    #             window.mayavi_widget.visualization.change_result()
+
+    # def load_xlsx_dialog(self): #beschrijving 'load annotations functie'
         fname, _ = QFileDialog.getOpenFileName(self, 'Select .xlsx annotations file', '.',filter="*.xlsx")
 
         #global annot3D, current_slide
         if fname:
-            window.mayavi_widget.visualization.load_data(fname)
+            window.mayavi_widget.visualization.load_xlsx(fname)
             window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
             window.mayavi_widget.visualization.redraw_all_points()
             if window.mayavi_widget.visualization.showResults==True:
@@ -482,7 +506,8 @@ class MainWindow(QMainWindow): #hele raam
         self.rdock.setWidget(self.mayavi_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
 
-        self.load_pkl_dialog()
+        self.load_annot_dialog()
+        # self.load_pkl_dialog()
         # if not self.pkl_dict:
         #     self.load_annot_dialog()
 
