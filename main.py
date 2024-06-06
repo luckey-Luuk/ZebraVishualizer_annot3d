@@ -36,6 +36,7 @@ current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
+amount_of_points = 20
 # directory = 'data/data_annot3d/20190621++2' #folder containing tif files
 directory = 'data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a'
 
@@ -65,18 +66,19 @@ class Visualization(HasTraits):
         self.showVolume=True
         self.showResults=False
 
-        self.amount_of_points=20 #TODO: make more dynamic
+        # self.amount_of_points=20 #TODO: make more dynamic
+        global amount_of_points
         # self.colour_array=create_colour_array() #TODO: get infinite colours
         self.cmap='gist_rainbow'
         self.colour_dict={}
         
-        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
+        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
         
         self.mayavi_result_dots=[None for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
 
         self.mayavi_result_lines=[None for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
 
-        self.mayavi_dots=[None for p in range(self.amount_of_points)]#location for mayavi to store individual dots
+        self.mayavi_dots=[None for p in range(amount_of_points)]#location for mayavi to store individual dots
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
@@ -107,7 +109,7 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
         if self.current_point_index not in self.colour_dict:
-            colour=cmapy.color(self.cmap, random.randrange(0, 256, 10), rgb_order=True)
+            colour=cmapy.color(self.cmap, random.randrange(0, 256), rgb_order=True)
             self.colour_dict[self.current_point_index]=tuple([x/255 for x in colour])
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=self.sphere_size)
 
@@ -128,17 +130,19 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index]=None
 
     def delete_all_points(self):
-        for p in range(self.amount_of_points):
+        global amount_of_points
+        for p in range(amount_of_points):
             if self.mayavi_dots[p] is not None:
                 self.mayavi_dots[p].remove()
                 self.mayavi_dots[p]=None
 
     def redraw_all_points(self): #redraws all points, used to update points for the next timestep
         self.delete_all_points()
-        for p in range(self.amount_of_points):
+        global amount_of_points
+        for p in range(amount_of_points):
             if self.point_location_data[self.current_image_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
                 if p not in self.colour_dict:
-                    colour=cmapy.color(self.cmap, random.randrange(0, 256, 10), rgb_order=True)
+                    colour=cmapy.color(self.cmap, random.randrange(0, 256), rgb_order=True)
                     self.colour_dict[p]=tuple([x/255 for x in colour])
                 self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_dict[p],scale_factor=self.sphere_size)
 
@@ -237,9 +241,10 @@ class Visualization(HasTraits):
             self.draw_point(cordinates[0],cordinates[1],cordinates[2])
 
     def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
+        global amount_of_points
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames):
-            for p in range(self.amount_of_points):
+            for p in range(amount_of_points):
                 if self.point_location_data[f][p][0] is not None:
                     point_data_list.append([f,p,self.point_location_data[f][p][0],self.point_location_data[f][p][1],self.point_location_data[f][p][2]])
 
@@ -251,12 +256,13 @@ class Visualization(HasTraits):
         book.save(file_name)
 
     def export_data(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
+        global amount_of_points
         x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
         y_mod=new_y_size/self.y_lenght
         z_mod=new_z_size/self.z_lenght
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames): #for every slice number
-            for p in range(self.amount_of_points): #for every tracking number
+            for p in range(amount_of_points): #for every tracking number
                 if self.point_location_data[f][p][0] is not None:
                     x=self.point_location_data[f][p][0]*x_mod
                     y=self.point_location_data[f][p][1]*y_mod
@@ -284,7 +290,8 @@ class Visualization(HasTraits):
     def load_xlsx(self,file_name="test_file.xlsx"): #knop load annotations TODO: change self.amount_of_points to max value in dot column
         book=load_workbook(filename=file_name)
         sheet=book.active
-        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #set data back to None to remove old data
+        global amount_of_points
+        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #set data back to None to remove old data
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
@@ -303,11 +310,12 @@ class Visualization(HasTraits):
                 new_link[f] = centroids[f][curr_label]
             linked_centroids[pkl_dict.index(trajectory)] = new_link
         
-        self.amount_of_points = len(pkl_dict)
-        self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)]
-        self.mayavi_dots=[None for p in range(self.amount_of_points)]
+        global amount_of_points
+        amount_of_points = len(pkl_dict)
+        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)]
+        self.mayavi_dots=[None for p in range(amount_of_points)]
         for f in range(self.amount_of_frames):
-            for p in range(self.amount_of_points):
+            for p in range(amount_of_points):
                 if f in linked_centroids[p]:
                     self.point_location_data[f][p][0] = linked_centroids[p][f][0]
                     self.point_location_data[f][p][1] = linked_centroids[p][f][1]
@@ -593,7 +601,8 @@ class MainWindow(QMainWindow): #hele raam
                 self.mayavi_widget.visualization.remove_results()
                 self.mayavi_widget.visualization.draw_results()
 
-        point_amount=20 #amount of points in pointlist
+        global amount_of_points
+        point_amount=amount_of_points #amount of points in pointlist
         point_list=[]   #list for the selectable points in the combobox
         for i in range(point_amount):
             point_list.append("cell "+str(i+1))
