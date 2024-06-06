@@ -15,6 +15,8 @@ import sys
 import math
 import pickle
 from openpyxl import Workbook, load_workbook
+import cmapy
+import random
 
 from AnnotationSpace3D import AnnotationSpace3D
 from helpers import find_centroids, read_tiff, create_image_dict, create_colour_array
@@ -64,7 +66,9 @@ class Visualization(HasTraits):
         self.showResults=False
 
         self.amount_of_points=20 #TODO: make more dynamic
-        self.colour_array=create_colour_array() #TODO: get infinite colours
+        # self.colour_array=create_colour_array() #TODO: get infinite colours
+        self.cmap='gist_rainbow'
+        self.colour_dict={}
         
         self.point_location_data=[[[None]*3 for p in range(self.amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
         
@@ -102,6 +106,9 @@ class Visualization(HasTraits):
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
+        if self.current_point_index not in self.colour_dict:
+            colour=cmapy.color(self.cmap, random.randrange(0, 256, 10), rgb_order=True)
+            self.colour_dict[self.current_point_index]=tuple([x/255 for x in colour])
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index],scale_factor=self.sphere_size)
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
@@ -130,7 +137,10 @@ class Visualization(HasTraits):
         self.delete_all_points()
         for p in range(self.amount_of_points):
             if self.point_location_data[self.current_image_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_array[p],scale_factor=self.sphere_size)
+                if p not in self.colour_dict:
+                    colour=cmapy.color(self.cmap, random.randrange(0, 256, 10), rgb_order=True)
+                    self.colour_dict[p]=tuple([x/255 for x in colour])
+                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_dict[p],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
@@ -178,14 +188,14 @@ class Visualization(HasTraits):
                 x_coordinate=self.point_location_data[i][self.current_point_index][0]
                 y_coordinate=self.point_location_data[i][self.current_point_index][1]
                 z_coordinate=self.point_location_data[i][self.current_point_index][2]
-                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[self.current_point_index],scale_factor=3)
+                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_dict[self.current_point_index],scale_factor=3)
 
 
                 if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
                     x_coordinates=[self.point_location_data[i-1][self.current_point_index][0],x_coordinate]
                     y_coordinates=[self.point_location_data[i-1][self.current_point_index][1],y_coordinate]
                     z_coordinates=[self.point_location_data[i-1][self.current_point_index][2],z_coordinate]
-                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[self.current_point_index],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_dict[self.current_point_index],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
 
     def remove_results(self): #stop met trajectory visualiseren
         for i in range(len(self.mayavi_result_dots)):
