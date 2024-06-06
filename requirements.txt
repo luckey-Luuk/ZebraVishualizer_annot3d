@@ -5,8 +5,6 @@ scikit-image # image processing
 imageio # dependency for PIL (Pillow)
 openpyxl
 pickle # read pkl
-cmapy # colormaps
-random
 
 ##when using python 3.10.10:
 #PySide2 # interface for mayavi
