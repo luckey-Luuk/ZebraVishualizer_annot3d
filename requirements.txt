@@ -5,6 +5,8 @@ scikit-image # image processing
 imageio # dependency for PIL (Pillow)
 openpyxl
 pickle # read pkl
+cmapy # colormaps
+random
 
 ##when using python 3.10.10:
 #PySide2 # interface for mayavi
@@ -14,7 +16,3 @@ pickle # read pkl
 # when using newer versions of python (3.12.2):
 PySide6
 https://github.com/enthought/mayavi/zipball/master # mayavi (in development, may be unstable)
-
-
-## Optional:
-# tqdm # for progress bars in terminal
