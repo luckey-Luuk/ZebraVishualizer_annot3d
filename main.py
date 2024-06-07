@@ -104,7 +104,7 @@ class Visualization(HasTraits):
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
             self.mayavi_dots[self.current_point_index]=None
-        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%20],scale_factor=self.sphere_size)
+        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
         if self.current_image_number==0: #there is no previous point for index 0
@@ -134,7 +134,7 @@ class Visualization(HasTraits):
         global amount_of_points
         for p in range(amount_of_points):
             if self.point_location_data[self.current_image_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_array[p%20],scale_factor=self.sphere_size)
+                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
         old_value=self.point_location_data[self.current_image_number][self.current_point_index]
@@ -182,14 +182,14 @@ class Visualization(HasTraits):
                 x_coordinate=self.point_location_data[i][self.current_point_index][0]
                 y_coordinate=self.point_location_data[i][self.current_point_index][1]
                 z_coordinate=self.point_location_data[i][self.current_point_index][2]
-                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[self.current_point_index%20],scale_factor=3)
+                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=3)
 
 
                 if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
                     x_coordinates=[self.point_location_data[i-1][self.current_point_index][0],x_coordinate]
                     y_coordinates=[self.point_location_data[i-1][self.current_point_index][1],y_coordinate]
                     z_coordinates=[self.point_location_data[i-1][self.current_point_index][2],z_coordinate]
-                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[self.current_point_index%20],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[self.current_point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
 
     def remove_results(self): #stop met trajectory visualiseren
         for i in range(len(self.mayavi_result_dots)):
@@ -280,8 +280,12 @@ class Visualization(HasTraits):
     def load_xlsx(self,file_name="test_file.xlsx"): #knop load annotations TODO: change self.amount_of_points to max value in dot column
         book=load_workbook(filename=file_name)
         sheet=book.active
+
         global amount_of_points
+        amount_of_points=max(cell.value for cell in sheet['B'][1:])+1
         self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #set data back to None to remove old data
+        self.mayavi_dots=[None for p in range(amount_of_points)]
+
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
