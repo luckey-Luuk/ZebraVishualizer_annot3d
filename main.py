@@ -481,12 +481,13 @@ class MainWindow(QMainWindow): #hele raam
         w.setLayout(l)
 
     # CANVAS LAYOUT #maak grid om knoppen op te plaatsen
-        canvas_layout = QGridLayout()
-        canvas_layout.setAlignment(Qt.AlignLeft)
-        sub_canvas_bar_transparancy_layout = QGridLayout()
-        sub_canvas_bar_size_layout= QGridLayout()
-        sub_canvas_functions_layout=QGridLayout()
-        sub_canvas_frame_and_selector_layout=QGridLayout()
+        canvas = QGridLayout()
+        canvas.setAlignment(Qt.AlignLeft)
+        sub_canvas_adjustments = QGridLayout()
+        sub_canvas_functions=QGridLayout()
+        sub_canvas_transparancy_bar = QGridLayout()
+        sub_canvas_size_bar= QGridLayout()
+        sub_canvas_frames=QGridLayout()
 
     # TOOLBAR, STATUSBAR, MENU #toolbar waar nu "file" op staat
         self.setup_bar_actions()
@@ -504,70 +505,13 @@ class MainWindow(QMainWindow): #hele raam
 
         self.animate()
     
+
     # GENERAL WINDOW PROPS
         self.setWindowTitle("Cell Annotation")
         self.setCentralWidget(w)
 
-        def create_button(self,text,update=[0,0,0]): #function to create standard button
-            self.button=QPushButton(text)
-            #self.button.setFixedWidth(width)
-            self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
-            self.button.setMinimumSize(60,60)
-            return self.button    
 
-        self.delete_button=QPushButton('delete') #'delete' is wat er op knop staat
-        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
-        self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
-        sub_canvas_functions_layout.addWidget(self.delete_button,0,1) #plaats knop op grid (self.knop, x op grid, y op grid)
-
-        self.continue_button=QPushButton('continue')
-        self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        self.continue_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.continue_button,0,0)
-
-        self.trajectory_button=QPushButton("trajectory")
-        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
-        self.trajectory_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.trajectory_button,0,3)
-
-        goto_button = QPushButton('goto')
-        goto_button.clicked.connect(self.goto_frame)
-        goto_button.setMinimumSize(50,50)
-        sub_canvas_frame_and_selector_layout.addWidget(goto_button,0,0)
-
-        #voeg dingen toe die geen knoppen zijn zoals 'x', 'y', 'z' en 'frame 1/120'
-        self.x_label = QLabel('X')
-        self.x_label.setMinimumSize(50,50)
-        self.y_label = QLabel('Y')
-        self.y_label.setMinimumSize(50,50)
-        self.z_label = QLabel('Z')
-        self.z_label.setMinimumSize(50,50)
-
-        self.frame_label = QLabel('frame 1/'+str(len(create_image_dict(directory)))) #number of current frame modified when switching
-        self.frame_label.setMinimumSize(50,50)
-        sub_canvas_frame_and_selector_layout.addWidget(self.frame_label,0,3)
-
-        canvas_layout.addWidget(self.x_label,0,0)
-        canvas_layout.addWidget(self.y_label,1,0)
-        canvas_layout.addWidget(self.z_label,2,0)
-        
-
-        canvas_layout.addWidget(create_button(self,'-5',[-5,0,0]),0,1) #create x-5 button
-        canvas_layout.addWidget(create_button(self,'-1',[-1,0,0]),0,2) #create x-1 button
-        canvas_layout.addWidget(create_button(self,'+1',[1,0,0]),0,3) #create x+1 button
-        canvas_layout.addWidget(create_button(self,'+5',[5,0,0]),0,4) #create x+5 button
-
-        canvas_layout.addWidget(create_button(self,'-5',[0,-5,0]),1,1) #create y-5 button
-        canvas_layout.addWidget(create_button(self,'-1',[0,-1,0]),1,2) #create y-1 button
-        canvas_layout.addWidget(create_button(self,'+1',[0,1,0]),1,3) #create y+1 button
-        canvas_layout.addWidget(create_button(self,'+5',[0,5,0]),1,4) #create y+5 button
-
-        canvas_layout.addWidget(create_button(self,'-5',[0,0,-5]),2,1) #create z-5 button
-        canvas_layout.addWidget(create_button(self,'-1',[0,0,-1]),2,2) #create z-1 button
-        canvas_layout.addWidget(create_button(self,'+1',[0,0,1]),2,3) #create z+1 button
-        canvas_layout.addWidget(create_button(self,'+5',[0,0,5]),2,4) #create z+5 button
-
-        #maak dropbox voor 'cell 1'
+        # sub canvas grid for several functions and cell selection
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)
@@ -584,53 +528,135 @@ class MainWindow(QMainWindow): #hele raam
         selection_box.addItems(point_list)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
         selection_box.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(selection_box,0,2)
+        sub_canvas_functions.addWidget(selection_box,0,0)
 
-        next_button = QPushButton('>')
-        next_button.clicked.connect(self.change_volume_model_next)
-        next_button.setMinimumSize(50,50)
-        sub_canvas_frame_and_selector_layout.addWidget(next_button,0,2)
+        self.continue_button=QPushButton('copy previous\nannotation')
+        self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
+        self.continue_button.setMinimumSize(50,50)
+        sub_canvas_functions.addWidget(self.continue_button,0,1)
 
-        previous_button = QPushButton('<')
-        previous_button.clicked.connect(self.change_volume_model_previous)
-        previous_button.setMinimumSize(50,50)
-        sub_canvas_frame_and_selector_layout.addWidget(previous_button,0,1)
+        self.delete_button=QPushButton('delete\nannotation') #'delete' is wat er op knop staat
+        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
+        self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
+        sub_canvas_functions.addWidget(self.delete_button,0,2) #plaats knop op grid (self.knop, x op grid, y op grid)
 
-        self.volume_button=QPushButton('Volume')
+
+        self.volume_button=QPushButton('show\nimage')
         self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
         self.volume_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.volume_button,0,4)
+        sub_canvas_functions.addWidget(self.volume_button,1,0)
 
-        #voeg sliders toe, tussen 1 en 20, anders doet het gek
+        self.trajectory_button=QPushButton("show cell\nannotation")
+        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        self.trajectory_button.setMinimumSize(50,50)
+        sub_canvas_functions.addWidget(self.trajectory_button,1,1)
+
+        self.all_trajectories_button=QPushButton("show all\nannotations")
+        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        self.all_trajectories_button.setMinimumSize(50,50)
+        sub_canvas_functions.addWidget(self.all_trajectories_button,1,2)
+
+
+        # sub canvas grid for annotation adjustments
+        self.x_label = QLabel('X')
+        # self.x_label.setMinimumSize(50,50)
+        self.y_label = QLabel('Y')
+        # self.y_label.setMinimumSize(50,50)
+        self.z_label = QLabel('Z')
+        # self.z_label.setMinimumSize(50,50)
+
+        sub_canvas_adjustments.setColumnMinimumWidth(0, 65)
+        sub_canvas_adjustments.addWidget(self.x_label,0,1)
+        sub_canvas_adjustments.addWidget(self.y_label,1,1)
+        sub_canvas_adjustments.addWidget(self.z_label,2,1)
+
+        def create_button(self,text,update=[0,0,0]): #function to create standard button
+            self.button=QPushButton(text)
+            self.button.setFixedWidth(20)
+            self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
+            # self.button.setMinimumSize(60,60)
+            return self.button
+
+        sub_canvas_adjustments.addWidget(create_button(self,'-5',[-5,0,0]),0,2) #create x-5 button
+        sub_canvas_adjustments.addWidget(create_button(self,'-1',[-1,0,0]),0,3) #create x-1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+1',[1,0,0]),0,4) #create x+1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+5',[5,0,0]),0,5) #create x+5 button
+
+        sub_canvas_adjustments.addWidget(create_button(self,'-5',[0,-5,0]),1,2) #create y-5 button
+        sub_canvas_adjustments.addWidget(create_button(self,'-1',[0,-1,0]),1,3) #create y-1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+1',[0,1,0]),1,4) #create y+1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+5',[0,5,0]),1,5) #create y+5 button
+
+        sub_canvas_adjustments.addWidget(create_button(self,'-5',[0,0,-5]),2,2) #create z-5 button
+        sub_canvas_adjustments.addWidget(create_button(self,'-1',[0,0,-1]),2,3) #create z-1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+1',[0,0,1]),2,4) #create z+1 button
+        sub_canvas_adjustments.addWidget(create_button(self,'+5',[0,0,5]),2,5) #create z+5 button
+
+
+        # sub canvas for transparancy slider
+        self.transparency_label = QLabel('transparency')
+        self.transparency_label.setMinimumWidth(80)
+        sub_canvas_transparancy_bar.addWidget(self.transparency_label,0,0)
+
         self.transparency_slider = QSlider(Qt.Horizontal)
         self.transparency_slider.setValue(10)
         self.transparency_slider.setMinimum(1.0)
         self.transparency_slider.setMaximum(20.0)
         self.transparency_slider.setSingleStep(0.1)
-        self.transparency_slider.setFixedWidth(300)
+        self.transparency_slider.setFixedWidth(250)
         self.transparency_slider.sliderReleased.connect(self.change_transparancy)  #past pas aan bij loslaten, kan ook bij bewegen maar is lag
+
+        sub_canvas_transparancy_bar.addWidget(self.transparency_slider,0,1, Qt.AlignLeft)
+
+        # sub canvas for sphere size slider
+        self.sphere_size_label = QLabel('sphere size')
+        self.sphere_size_label.setMinimumWidth(80)
+        sub_canvas_size_bar.addWidget(self.sphere_size_label,0,0)
 
         self.sphere_size_slider = QSlider(Qt.Horizontal)
         self.sphere_size_slider.setValue(10)
         self.sphere_size_slider.setMinimum(1.0)
         self.sphere_size_slider.setMaximum(20.0)
         self.sphere_size_slider.setSingleStep(0.1)
-        self.sphere_size_slider.setFixedWidth(300)
+        self.sphere_size_slider.setFixedWidth(250)
         self.sphere_size_slider.sliderReleased.connect(self.change_sphere_size)
 
-        sub_canvas_bar_transparancy_layout.addWidget(QLabel("Transparency"),0,0)
-        sub_canvas_bar_transparancy_layout.addWidget(self.transparency_slider,0,1)
+        sub_canvas_size_bar.addWidget(self.sphere_size_slider,0,1, Qt.AlignLeft)
 
-        sub_canvas_bar_size_layout.addWidget(QLabel("Sphere size"),0,0)
-        sub_canvas_bar_size_layout.addWidget(self.sphere_size_slider,0,1)
 
-        #voeg alle grids toe aan ander grid 'l'
-        canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
-        canvas_layout.addLayout(sub_canvas_frame_and_selector_layout,4,0,1,0,Qt.AlignLeft)
-        canvas_layout.addLayout(sub_canvas_bar_transparancy_layout,6,0,1,0,Qt.AlignLeft)
-        canvas_layout.addLayout(sub_canvas_bar_size_layout,7,0,1,0,Qt.AlignLeft)
+        # sub canvas for frame navigation
+        goto_button = QPushButton('goto')
+        goto_button.clicked.connect(self.goto_frame)
+        # goto_button.setMinimumSize(50,50)
+        sub_canvas_frames.addWidget(goto_button,0,0)
 
-        l.addLayout(canvas_layout) #voeg grid 'l' toe aan window
+        previous_button = QPushButton('<')
+        previous_button.clicked.connect(self.change_volume_model_previous)
+        # previous_button.setMinimumSize(50,50)
+        sub_canvas_frames.addWidget(previous_button,0,1)
+
+        next_button = QPushButton('>')
+        next_button.clicked.connect(self.change_volume_model_next)
+        # next_button.setMinimumSize(50,50)
+        sub_canvas_frames.addWidget(next_button,0,2)
+
+        self.frame_label = QLabel('frame 1/'+str(len(create_image_dict(directory)))) #number of current frame modified when switching
+        # self.frame_label.setMinimumSize(50,50)
+        sub_canvas_frames.addWidget(self.frame_label,0,3)
+
+
+        # add sub canvas grids to main canvas
+        canvas.addLayout(sub_canvas_functions,0,0,1,0,Qt.AlignLeft)
+        canvas.setRowMinimumHeight(1, 50)
+        canvas.addLayout(sub_canvas_adjustments,2,0,1,0,Qt.AlignLeft)
+        canvas.setRowMinimumHeight(3, 50)
+        canvas.addLayout(sub_canvas_transparancy_bar,4,0,1,0,Qt.AlignLeft)
+        canvas.addLayout(sub_canvas_size_bar,5,0,1,0,Qt.AlignLeft)
+        canvas.setRowMinimumHeight(6, 50)
+        canvas.addLayout(sub_canvas_frames,7,0,1,0,Qt.AlignLeft)
+
+        l.addLayout(canvas) #voeg grid 'l' toe aan window
+
 
         #popup layout #voor export
         self.popup=QDialog(self)
@@ -752,7 +778,7 @@ class MainWindow(QMainWindow): #hele raam
 
     def update_frame_number(self): #used to change frame number display
         frame_number=self.mayavi_widget.visualization.current_frame_number
-        text="frame "+str(frame_number+1)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
+        text="frame "+str(frame_number)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
         self.frame_label.setText(text)
 
     def goto_frame(self): #'goto' knop popup
@@ -760,7 +786,7 @@ class MainWindow(QMainWindow): #hele raam
 
         cs, ok = QInputDialog.getText(self, "Go to frame", "Go to frame")
         if ok and cs.isnumeric(): # current frame cs must be a number
-            cs = int(cs)-1
+            cs = int(cs)
             if cs < 0: # frame out of range
                 return
         window.mayavi_widget.visualization.update_frame(cs)
