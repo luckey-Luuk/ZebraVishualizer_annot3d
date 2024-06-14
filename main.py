@@ -170,18 +170,19 @@ class Visualization(HasTraits):
             self.update_volume()
 
     def draw_trajectory(self, frame_limit, point_index): #tekent trajectory #TODO: teken 1 stap
-        for f in range(frame_limit):
-            if self.point_location_data[f][point_index][0] is not None: #check if point exists #teken punt
-                x_coordinate=self.point_location_data[f][point_index][0]
-                y_coordinate=self.point_location_data[f][point_index][1]
-                z_coordinate=self.point_location_data[f][point_index][2]
-                self.mayavi_result_dots[f]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
+        if self.point_location_data[self.current_frame_number][point_index][0] is not None:
+            for f in range(frame_limit):
+                if self.point_location_data[f][point_index][0] is not None: #check if point exists #teken punt
+                    x_coordinate=self.point_location_data[f][point_index][0]
+                    y_coordinate=self.point_location_data[f][point_index][1]
+                    z_coordinate=self.point_location_data[f][point_index][2]
+                    self.mayavi_result_dots[f]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
 
-            if f!=0 and self.point_location_data[f-1][point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
-                x_coordinates=[self.point_location_data[f-1][point_index][0],x_coordinate]
-                y_coordinates=[self.point_location_data[f-1][point_index][1],y_coordinate]
-                z_coordinates=[self.point_location_data[f-1][point_index][2],z_coordinate]
-                self.mayavi_result_lines[f-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+                if f!=0 and self.point_location_data[f-1][point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
+                    x_coordinates=[self.point_location_data[f-1][point_index][0],x_coordinate]
+                    y_coordinates=[self.point_location_data[f-1][point_index][1],y_coordinate]
+                    z_coordinates=[self.point_location_data[f-1][point_index][2],z_coordinate]
+                    self.mayavi_result_lines[f-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
 
     def remove_trajectory(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
         for d in range(len(self.mayavi_result_dots)):
@@ -477,8 +478,8 @@ class MainWindow(QMainWindow): #hele raam
 
         w = QWidget()
         
-        l = QHBoxLayout()
-        w.setLayout(l)
+        layout = QHBoxLayout()
+        w.setLayout(layout)
 
     # CANVAS LAYOUT #maak grid om knoppen op te plaatsen
         canvas = QGridLayout()
@@ -511,7 +512,7 @@ class MainWindow(QMainWindow): #hele raam
         self.setCentralWidget(w)
 
 
-        # sub canvas grid for several functions and cell selection
+        # Sub canvas grid for several functions and cell selection
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)
@@ -557,7 +558,7 @@ class MainWindow(QMainWindow): #hele raam
         sub_canvas_functions.addWidget(self.all_trajectories_button,1,2)
 
 
-        # sub canvas grid for annotation adjustments
+        # Sub canvas grid for annotation adjustments
         self.x_label = QLabel('X')
         # self.x_label.setMinimumSize(50,50)
         self.y_label = QLabel('Y')
@@ -593,7 +594,7 @@ class MainWindow(QMainWindow): #hele raam
         sub_canvas_adjustments.addWidget(create_button(self,'+5',[0,0,5]),2,5) #create z+5 button
 
 
-        # sub canvas for transparancy slider
+        # Sub canvas for transparancy slider
         self.transparency_label = QLabel('transparency')
         self.transparency_label.setMinimumWidth(80)
         sub_canvas_transparancy_bar.addWidget(self.transparency_label,0,0)
@@ -603,12 +604,12 @@ class MainWindow(QMainWindow): #hele raam
         self.transparency_slider.setMinimum(1.0)
         self.transparency_slider.setMaximum(20.0)
         self.transparency_slider.setSingleStep(0.1)
-        self.transparency_slider.setFixedWidth(250)
+        self.transparency_slider.setFixedWidth(170)
         self.transparency_slider.sliderReleased.connect(self.change_transparancy)  #past pas aan bij loslaten, kan ook bij bewegen maar is lag
 
         sub_canvas_transparancy_bar.addWidget(self.transparency_slider,0,1, Qt.AlignLeft)
 
-        # sub canvas for sphere size slider
+        # Sub canvas for sphere size slider
         self.sphere_size_label = QLabel('sphere size')
         self.sphere_size_label.setMinimumWidth(80)
         sub_canvas_size_bar.addWidget(self.sphere_size_label,0,0)
@@ -618,13 +619,13 @@ class MainWindow(QMainWindow): #hele raam
         self.sphere_size_slider.setMinimum(1.0)
         self.sphere_size_slider.setMaximum(20.0)
         self.sphere_size_slider.setSingleStep(0.1)
-        self.sphere_size_slider.setFixedWidth(250)
+        self.sphere_size_slider.setFixedWidth(170)
         self.sphere_size_slider.sliderReleased.connect(self.change_sphere_size)
 
         sub_canvas_size_bar.addWidget(self.sphere_size_slider,0,1, Qt.AlignLeft)
 
 
-        # sub canvas for frame navigation
+        # Sub canvas for frame navigation
         goto_button = QPushButton('goto')
         goto_button.clicked.connect(self.goto_frame)
         # goto_button.setMinimumSize(50,50)
@@ -640,12 +641,12 @@ class MainWindow(QMainWindow): #hele raam
         # next_button.setMinimumSize(50,50)
         sub_canvas_frames.addWidget(next_button,0,2)
 
-        self.frame_label = QLabel('frame 1/'+str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching len(create_image_dict(directory)
+        self.frame_label = QLabel('frame 1/'+str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching
         # self.frame_label.setMinimumSize(50,50)
-        sub_canvas_frames.addWidget(self.frame_label,0,3)
+        sub_canvas_frames.addWidget(self.frame_label,1,0)
 
 
-        # add sub canvas grids to main canvas
+        # Add sub canvas grids to main canvas
         canvas.addLayout(sub_canvas_functions,0,0,1,0,Qt.AlignLeft)
         canvas.setRowMinimumHeight(1, 50)
         canvas.addLayout(sub_canvas_adjustments,2,0,1,0,Qt.AlignLeft)
@@ -655,7 +656,7 @@ class MainWindow(QMainWindow): #hele raam
         canvas.setRowMinimumHeight(6, 50)
         canvas.addLayout(sub_canvas_frames,7,0,1,0,Qt.AlignLeft)
 
-        l.addLayout(canvas) #voeg grid 'l' toe aan window
+        layout.addLayout(canvas) #voeg grid 'layout' toe aan window
 
 
         #popup layout #voor export
