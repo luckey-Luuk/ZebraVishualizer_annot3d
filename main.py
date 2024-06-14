@@ -640,7 +640,7 @@ class MainWindow(QMainWindow): #hele raam
         # next_button.setMinimumSize(50,50)
         sub_canvas_frames.addWidget(next_button,0,2)
 
-        self.frame_label = QLabel('frame 1/'+str(len(create_image_dict(directory)))) #number of current frame modified when switching
+        self.frame_label = QLabel('frame 1/'+str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching len(create_image_dict(directory)
         # self.frame_label.setMinimumSize(50,50)
         sub_canvas_frames.addWidget(self.frame_label,0,3)
 
@@ -778,7 +778,7 @@ class MainWindow(QMainWindow): #hele raam
 
     def update_frame_number(self): #used to change frame number display
         frame_number=self.mayavi_widget.visualization.current_frame_number
-        text="frame "+str(frame_number)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
+        text="frame "+str(frame_number)+"/"+str(self.mayavi_widget.visualization.amount_of_frames-1)
         self.frame_label.setText(text)
 
     def goto_frame(self): #'goto' knop popup
@@ -837,21 +837,21 @@ if __name__ == "__main__":
 
     # set app style
     app.setStyle('Fusion')
-    palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(53, 53, 53))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor(25, 25, 25))
-    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-    palette.setColor(QPalette.ToolTipBase, Qt.black)
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor(53, 53, 53))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Link, QColor(42, 130, 218))
-    palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
-    palette.setColor(QPalette.HighlightedText, Qt.black)
-    app.setPalette(palette)
+    # palette = QPalette()
+    # palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    # palette.setColor(QPalette.WindowText, Qt.white)
+    # palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    # palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ToolTipBase, Qt.black)
+    # palette.setColor(QPalette.ToolTipText, Qt.white)
+    # palette.setColor(QPalette.Text, Qt.white)
+    # palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ButtonText, Qt.white)
+    # palette.setColor(QPalette.BrightText, Qt.red)
+    # palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    # palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    # palette.setColor(QPalette.HighlightedText, Qt.black)
+    # app.setPalette(palette)
 
     # create main window and start app
     window = MainWindow()
