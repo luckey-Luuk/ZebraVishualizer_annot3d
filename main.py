@@ -19,6 +19,8 @@ from openpyxl import Workbook, load_workbook
 from AnnotationSpace3D import AnnotationSpace3D
 from helpers import find_centroids, read_tiff, create_image_dict, create_colour_array
 
+#TODO: get rid of globals
+
 COLORS = {
     '#ff0000': [255, 0, 0, 255],
     '#35e3e3': [53, 227, 227, 255],
@@ -30,7 +32,7 @@ ERASER_COLOR_RGBA = [255, 255, 255, 255]
 INIT_COLOR_RGBA = COLORS['#ff0000']
 
 p = 'xy' # xy initially, yz, xz
-current_slide = {'xy': 0, 'xz': 0, 'yz': 0}
+current_frame = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
@@ -57,12 +59,12 @@ class Visualization(HasTraits):
         global directory
         self.image_dictionary=create_image_dict(directory)
         self.amount_of_frames=len(self.image_dictionary)
-        self.current_image_number=0
+        self.current_frame_number=0
         self.current_point_index=0
         self.transparancy=1.0
 
         self.showVolume=True
-        self.showResults=False
+        self.showTrajectory=False
 
         # self.amount_of_points=20 #TODO: make more dynamic
         global amount_of_points
@@ -99,7 +101,7 @@ class Visualization(HasTraits):
 
     def draw_point(self,new_x,new_y,new_z):#updates point data and draws updated point
         #update point data
-        self.point_location_data[self.current_image_number][self.current_point_index]=[new_x,new_y,new_z]
+        self.point_location_data[self.current_frame_number][self.current_point_index]=[new_x,new_y,new_z]
         #draw new point
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
@@ -107,16 +109,16 @@ class Visualization(HasTraits):
         self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
-        if self.current_image_number==0: #there is no previous point for index 0
+        if self.current_frame_number==0: #there is no previous point for index 0
             return
-        elif self.point_location_data[self.current_image_number-1][self.current_point_index][0]==None: #check if previous dot location is not None
+        elif self.point_location_data[self.current_frame_number-1][self.current_point_index][0]==None: #check if previous dot location is not None
             return
-        new_location=self.point_location_data[self.current_image_number-1][self.current_point_index]
+        new_location=self.point_location_data[self.current_frame_number-1][self.current_point_index]
         self.draw_point(new_location[0],new_location[1],new_location[2])
 
     def delete_point(self):
         #update point data
-        self.point_location_data[self.current_image_number][self.current_point_index]=[None,None,None]
+        self.point_location_data[self.current_frame_number][self.current_point_index]=[None,None,None]
         #delete point
         if self.mayavi_dots[self.current_point_index] is not None:
             self.mayavi_dots[self.current_point_index].remove()
@@ -133,32 +135,17 @@ class Visualization(HasTraits):
         self.delete_all_points()
         global amount_of_points
         for p in range(amount_of_points):
-            if self.point_location_data[self.current_image_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_image_number][p][0],self.point_location_data[self.current_image_number][p][1],self.point_location_data[self.current_image_number][p][2],color=self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
+            if self.point_location_data[self.current_frame_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
+                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_frame_number][p][0],self.point_location_data[self.current_frame_number][p][1],self.point_location_data[self.current_frame_number][p][2],color=self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
-        old_value=self.point_location_data[self.current_image_number][self.current_point_index]
+        old_value=self.point_location_data[self.current_frame_number][self.current_point_index]
         if old_value[0] is not None:#check if value exists 
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
-    def update_volume(self,next_or_previous='next'): #wisselen naar nieuwe slide
-        if next_or_previous=="next": #go to next slide
-            if self.current_image_number==self.amount_of_frames-1:
-                self.current_image_number=0 #loop around
-            else:
-                self.current_image_number+=1
-        elif next_or_previous=="previous": #go to previous slide
-            if self.current_image_number==0:
-                self.current_image_number=self.amount_of_frames-1 #loop around
-            else:
-                self.current_image_number-=1
-        elif isinstance(next_or_previous,int): #used for goto function to go to a specific slide
-            if self.amount_of_frames-1<next_or_previous:
-                self.current_image_number=self.amount_of_frames-1
-            else:
-                self.current_image_number=next_or_previous
+    def update_volume(self):
         global directory
-        window.load_source_file(directory+'/'+self.image_dictionary[self.current_image_number])
+        window.load_source_file(directory+'/'+self.image_dictionary[self.current_frame_number])
         npimages = annot3D.get_npimages()
         if self.volume is not None:
             self.volume.remove()
@@ -166,8 +153,6 @@ class Visualization(HasTraits):
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace)
         self.volume = mlab.pipeline.volume(mlab.pipeline.scalar_field(npimages),color=(0,1,0),vmax=np.amax(npimages)*self.transparancy) #volume renderen
-        self.redraw_all_points()
-        #mlab.orientation_axes()
     
     def remove_volume(self):
         if self.volume is not None: #can't be removed if it isn't there in the first place
@@ -176,59 +161,79 @@ class Visualization(HasTraits):
             self.npspace_sf.remove()
             self.npspace_sf=None
     
-    def draw_results(self): #tekent trajectory
-        for i in range(len(self.point_location_data)):
-            if self.point_location_data[i][self.current_point_index][0] is not None: #check if point exists #teken punt
-                x_coordinate=self.point_location_data[i][self.current_point_index][0]
-                y_coordinate=self.point_location_data[i][self.current_point_index][1]
-                z_coordinate=self.point_location_data[i][self.current_point_index][2]
-                self.mayavi_result_dots[i]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=3)
-
-
-                if i!=0 and self.point_location_data[i-1][self.current_point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
-                    x_coordinates=[self.point_location_data[i-1][self.current_point_index][0],x_coordinate]
-                    y_coordinates=[self.point_location_data[i-1][self.current_point_index][1],y_coordinate]
-                    z_coordinates=[self.point_location_data[i-1][self.current_point_index][2],z_coordinate]
-                    self.mayavi_result_lines[i-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[self.current_point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
-
-    def remove_results(self): #stop met trajectory visualiseren
-        for i in range(len(self.mayavi_result_dots)):
-            if self.mayavi_result_dots[i] is not None:
-                self.mayavi_result_dots[i].remove()
-                self.mayavi_result_dots[i]=None
-
-        for i in range(len(self.mayavi_result_lines)):
-            if self.mayavi_result_lines[i] is not None:
-                self.mayavi_result_lines[i].remove()
-                self.mayavi_result_lines[i]=None
-
-    def change_result(self): #changes showing and not showing results #toggle voor trajectory (knop)
-        if self.showResults==False:
-            self.showResults=True
-            self.draw_results()
-            window.ToggleVolumeButton.setEnabled(True)
-        else:
-            self.remove_results()
-            self.showResults=False
-            window.ToggleVolumeButton.setEnabled(False)
-            if self.showVolume==False:
-                self.toggle_volume()
-
     def toggle_volume(self): #toggle voor volume (knop), gebruikt update en remove volume
         if self.showVolume==True:
             self.showVolume=False
             self.remove_volume()
-            self.delete_all_points()
         else:
             self.showVolume=True
-            self.redraw_all_points()
-            self.update_volume(None)
+            self.update_volume()
+
+    def draw_trajectory(self, frame_limit, point_index): #tekent trajectory #TODO: teken 1 stap
+        for f in range(frame_limit):
+            if self.point_location_data[f][point_index][0] is not None: #check if point exists #teken punt
+                x_coordinate=self.point_location_data[f][point_index][0]
+                y_coordinate=self.point_location_data[f][point_index][1]
+                z_coordinate=self.point_location_data[f][point_index][2]
+                self.mayavi_result_dots[f]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
+
+            if f!=0 and self.point_location_data[f-1][point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
+                x_coordinates=[self.point_location_data[f-1][point_index][0],x_coordinate]
+                y_coordinates=[self.point_location_data[f-1][point_index][1],y_coordinate]
+                z_coordinates=[self.point_location_data[f-1][point_index][2],z_coordinate]
+                self.mayavi_result_lines[f-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+
+    def remove_trajectory(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
+        for d in range(len(self.mayavi_result_dots)):
+            if self.mayavi_result_dots[d] is not None:
+                self.mayavi_result_dots[d].remove()
+                self.mayavi_result_dots[d]=None
+
+        for d in range(len(self.mayavi_result_lines)):
+            if self.mayavi_result_lines[d] is not None:
+                self.mayavi_result_lines[d].remove()
+                self.mayavi_result_lines[d]=None
+
+    def toggle_trajectory(self): #changes showing and not showing results #toggle voor trajectory (knop)
+        if self.showTrajectory==False:
+            self.showTrajectory=True
+            self.draw_trajectory(self.current_frame_number, self.current_point_index)
+        else:
+            self.remove_trajectory()
+            self.showTrajectory=False
+
+    def update_frame(self,next_or_previous='next'):
+        if next_or_previous=="next": #go to next frame
+            if self.current_frame_number==self.amount_of_frames-1:
+                self.current_frame_number=0 #loop around
+            else:
+                self.current_frame_number+=1
+        elif next_or_previous=="previous": #go to previous frame
+            if self.current_frame_number==0:
+                self.current_frame_number=self.amount_of_frames-1 #loop around
+            else:
+                self.current_frame_number-=1
+        elif isinstance(next_or_previous,int): #used for goto function to go to a specific frame
+            if self.amount_of_frames-1<next_or_previous:
+                self.current_frame_number=self.amount_of_frames-1
+            else:
+                self.current_frame_number=next_or_previous
+
+        if self.showVolume==True:
+            self.update_volume()
+
+        self.redraw_all_points()
+        
+        if self.showTrajectory==True:
+            self.remove_trajectory()
+            self.draw_trajectory(self.current_frame_number, self.current_point_index)
+        #mlab.orientation_axes()
 
     def picker_callback(self,picker): #kijkt waar je klikt en tekent punt
         if self.showVolume==True:
             #print(dir(picker))
-            cordinates=picker.pick_position
-            self.draw_point(cordinates[0],cordinates[1],cordinates[2])
+            coordinates=picker.pick_position
+            self.draw_point(coordinates[0],coordinates[1],coordinates[2])
 
     def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
         global amount_of_points
@@ -344,13 +349,13 @@ class MainWindow(QMainWindow): #hele raam
         explanation
     dims : tuple
         explanation
-    slides : dict
+    frames : dict
         explanation
     plane_depth : dict
         explanation
-    slide_annotations : dict
+    frame_annotations : dict
         explanation
-    num_slides : int
+    num_frames : int
         explanation
     npimages : int
         explanation
@@ -367,10 +372,10 @@ class MainWindow(QMainWindow): #hele raam
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
     dims = (500, 500, 25) # w, h, d
-    slides={}
+    frames={}
     plane_depth = {}
-    slide_annotations = {}
-    num_slides = 0
+    frame_annotations = {}
+    num_frames = 0
     npimages = -1
 
     pkl_dict = None
@@ -397,37 +402,12 @@ class MainWindow(QMainWindow): #hele raam
         else:
             return
 
-        if not setup: #TODO: verzin een manier om dit beter te doen
-            window.mayavi_widget.visualization.update_volume()
+        if not setup:
+            window.mayavi_widget.visualization.update_frame()
             window.mayavi_widget.visualization.redraw_all_points()
-            if window.mayavi_widget.visualization.showResults==True:
-                window.mayavi_widget.visualization.change_result()
+            if window.mayavi_widget.visualization.showTrajectory==True:
+                window.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
         return
-
-    #gemerged in load_annot_dialog
-    # def load_pkl_dialog(self): #TODO: check if .pkl is compatible with .tif
-    #     fname, _ = QFileDialog.getOpenFileName(self, 'Select .pkl annotations file (optional)', '.',filter="*.pkl")
-
-    #     if fname:
-    #         key = directory.split('/')[-1].split('_')[0]
-    #         self.pkl_dict = pickle.load(open(fname, 'rb'))[key]
-    #         self.mayavi_widget.visualization.load_pkl(self.pkl_dict)
-
-    #         window.mayavi_widget.visualization.update_volume()
-    #         window.mayavi_widget.visualization.redraw_all_points()
-    #         if window.mayavi_widget.visualization.showResults==True:
-    #             window.mayavi_widget.visualization.change_result()
-
-    # def load_xlsx_dialog(self): #beschrijving 'load annotations functie'
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select .xlsx annotations file', '.',filter="*.xlsx")
-
-        #global annot3D, current_slide
-        if fname:
-            window.mayavi_widget.visualization.load_xlsx(fname)
-            window.mayavi_widget.visualization.update_volume() #The visualisation needs to be updated after data is loaded
-            window.mayavi_widget.visualization.redraw_all_points()
-            if window.mayavi_widget.visualization.showResults==True:
-                window.mayavi_widget.visualization.change_result()
 
     def load_source_file(self, filename): #uit annot3D, nodig
         """Text.
@@ -441,11 +421,11 @@ class MainWindow(QMainWindow): #hele raam
         -------
         None
         """
-        global COLORS, p, current_slide, annot3D
+        global COLORS, p, current_frame, annot3D
 
-        self.slides['xy'], self.slides['xz'], self.slides['yz'] = read_tiff(filename)
+        self.frames['xy'], self.frames['xz'], self.frames['yz'] = read_tiff(filename)
 
-        self.npimages = self.slides['xy']
+        self.npimages = self.frames['xy']
         
         w = self.npimages[0].shape[0]
         h = self.npimages[0].shape[1]
@@ -461,9 +441,9 @@ class MainWindow(QMainWindow): #hele raam
 
         self.dims = (w, h, d)
 
-        self.num_slides = self.plane_depth[p]
+        self.num_frames = self.plane_depth[p]
 
-        self.slide_annotations = {
+        self.frame_annotations = {
             'xy': [] * d, 
             'xz': [] * w, 
             'yz': [] * h
@@ -506,7 +486,7 @@ class MainWindow(QMainWindow): #hele raam
         sub_canvas_bar_transparancy_layout = QGridLayout()
         sub_canvas_bar_size_layout= QGridLayout()
         sub_canvas_functions_layout=QGridLayout()
-        sub_canvas_slide_and_selector_layout=QGridLayout()
+        sub_canvas_frame_and_selector_layout=QGridLayout()
 
     # TOOLBAR, STATUSBAR, MENU #toolbar waar nu "file" op staat
         self.setup_bar_actions()
@@ -540,22 +520,22 @@ class MainWindow(QMainWindow): #hele raam
         self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
         sub_canvas_functions_layout.addWidget(self.delete_button,0,1) #plaats knop op grid (self.knop, x op grid, y op grid)
 
-        self.create_button=QPushButton('continue')
-        self.create_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        self.create_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.create_button,0,0)
+        self.continue_button=QPushButton('continue')
+        self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
+        self.continue_button.setMinimumSize(50,50)
+        sub_canvas_functions_layout.addWidget(self.continue_button,0,0)
 
-        self.result_button=QPushButton("trajectory")
-        self.result_button.clicked.connect(lambda: self.mayavi_widget.visualization.change_result())
-        self.result_button.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.result_button,0,3)
+        self.trajectory_button=QPushButton("trajectory")
+        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        self.trajectory_button.setMinimumSize(50,50)
+        sub_canvas_functions_layout.addWidget(self.trajectory_button,0,3)
 
-        gotoButton = QPushButton('goto')
-        gotoButton.clicked.connect(self.goto_slide)
-        gotoButton.setMinimumSize(50,50)
-        sub_canvas_slide_and_selector_layout.addWidget(gotoButton,0,0)
+        goto_button = QPushButton('goto')
+        goto_button.clicked.connect(self.goto_frame)
+        goto_button.setMinimumSize(50,50)
+        sub_canvas_frame_and_selector_layout.addWidget(goto_button,0,0)
 
-        #voeg dingen toe die geen knoppen zijn zoals 'x', 'y', 'z' en 'slide 1/120'
+        #voeg dingen toe die geen knoppen zijn zoals 'x', 'y', 'z' en 'frame 1/120'
         self.x_label = QLabel('X')
         self.x_label.setMinimumSize(50,50)
         self.y_label = QLabel('Y')
@@ -563,9 +543,9 @@ class MainWindow(QMainWindow): #hele raam
         self.z_label = QLabel('Z')
         self.z_label.setMinimumSize(50,50)
 
-        self.slide_label = QLabel('slide 1/'+str(len(create_image_dict(directory)))) #number of current slide modified when switching
-        self.slide_label.setMinimumSize(50,50)
-        sub_canvas_slide_and_selector_layout.addWidget(self.slide_label,0,3)
+        self.frame_label = QLabel('frame 1/'+str(len(create_image_dict(directory)))) #number of current frame modified when switching
+        self.frame_label.setMinimumSize(50,50)
+        sub_canvas_frame_and_selector_layout.addWidget(self.frame_label,0,3)
 
         canvas_layout.addWidget(self.x_label,0,0)
         canvas_layout.addWidget(self.y_label,1,0)
@@ -590,16 +570,15 @@ class MainWindow(QMainWindow): #hele raam
         #maak dropbox voor 'cell 1'
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point=new_point.split(" ")[1] #split the string and take the number
-            self.mayavi_widget.visualization.current_point_index=int(new_point)-1 #-1 becouse index starts at 0
-            if self.mayavi_widget.visualization.showResults==True: #change between different results if mode is result
-                self.mayavi_widget.visualization.remove_results()
-                self.mayavi_widget.visualization.draw_results()
+            self.mayavi_widget.visualization.current_point_index=int(new_point)
+            if self.mayavi_widget.visualization.showTrajectory==True: #change between different results if mode is result
+                self.mayavi_widget.visualization.remove_trajectory()
+                self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
 
         global amount_of_points
-        point_amount=amount_of_points #amount of points in pointlist
         point_list=[]   #list for the selectable points in the combobox
-        for i in range(point_amount):
-            point_list.append("cell "+str(i+1))
+        for i in range(amount_of_points):
+            point_list.append("cell "+str(i))
 
         selection_box=QComboBox()
         selection_box.addItems(point_list)    
@@ -607,22 +586,20 @@ class MainWindow(QMainWindow): #hele raam
         selection_box.setMinimumSize(50,50)
         sub_canvas_functions_layout.addWidget(selection_box,0,2)
 
-        ChangeVolumeNextButton = QPushButton('>')
-        ChangeVolumeNextButton.clicked.connect(self.change_volume_model_next)
-        ChangeVolumeNextButton.setMinimumSize(50,50)
-        sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumeNextButton,0,2)
+        next_button = QPushButton('>')
+        next_button.clicked.connect(self.change_volume_model_next)
+        next_button.setMinimumSize(50,50)
+        sub_canvas_frame_and_selector_layout.addWidget(next_button,0,2)
 
-        ChangeVolumePreviusButton = QPushButton('<')
-        ChangeVolumePreviusButton.clicked.connect(self.change_volume_model_previous)
-        ChangeVolumePreviusButton.setMinimumSize(50,50)
-        sub_canvas_slide_and_selector_layout.addWidget(ChangeVolumePreviusButton,0,1)
+        previous_button = QPushButton('<')
+        previous_button.clicked.connect(self.change_volume_model_previous)
+        previous_button.setMinimumSize(50,50)
+        sub_canvas_frame_and_selector_layout.addWidget(previous_button,0,1)
 
-        self.ToggleVolumeButton=QPushButton('Volume')
-        self.ToggleVolumeButton.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
-        self.ToggleVolumeButton.setMinimumSize(50,50)
-        sub_canvas_functions_layout.addWidget(self.ToggleVolumeButton,0,4)
-
-        self.ToggleVolumeButton.setEnabled(False)
+        self.volume_button=QPushButton('Volume')
+        self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
+        self.volume_button.setMinimumSize(50,50)
+        sub_canvas_functions_layout.addWidget(self.volume_button,0,4)
 
         #voeg sliders toe, tussen 1 en 20, anders doet het gek
         self.transparency_slider = QSlider(Qt.Horizontal)
@@ -649,7 +626,7 @@ class MainWindow(QMainWindow): #hele raam
 
         #voeg alle grids toe aan ander grid 'l'
         canvas_layout.addLayout(sub_canvas_functions_layout,3,0,1,0,Qt.AlignLeft)
-        canvas_layout.addLayout(sub_canvas_slide_and_selector_layout,4,0,1,0,Qt.AlignLeft)
+        canvas_layout.addLayout(sub_canvas_frame_and_selector_layout,4,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_transparancy_layout,6,0,1,0,Qt.AlignLeft)
         canvas_layout.addLayout(sub_canvas_bar_size_layout,7,0,1,0,Qt.AlignLeft)
 
@@ -712,8 +689,8 @@ class MainWindow(QMainWindow): #hele raam
         #'goto' knop
         gotoAction = QAction('goto', self)
         gotoAction.setShortcut(QKeySequence.Find)
-        gotoAction.setStatusTip('Go to specific slide')
-        gotoAction.triggered.connect(self.goto_slide)
+        gotoAction.setStatusTip('Go to specific frame')
+        gotoAction.triggered.connect(self.goto_frame)
 
         #'<' en '>' knoppen
         ChangeVolumeNextAction = QAction('>', self)
@@ -773,34 +750,32 @@ class MainWindow(QMainWindow): #hele raam
         if fname:
             window.mayavi_widget.visualization.export_data(fname,x_size,y_size,z_size)
 
-    def update_slide_number(self): #used to change slide number display
-        slide_number=self.mayavi_widget.visualization.current_image_number
-        text="slide "+str(slide_number+1)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
-        self.slide_label.setText(text)
+    def update_frame_number(self): #used to change frame number display
+        frame_number=self.mayavi_widget.visualization.current_frame_number
+        text="frame "+str(frame_number+1)+"/"+str(len(self.mayavi_widget.visualization.image_dictionary))
+        self.frame_label.setText(text)
 
-    def goto_slide(self): #'goto' knop popup
+    def goto_frame(self): #'goto' knop popup
         global p, annot3D
 
-        cs, ok = QInputDialog.getText(self, "Go to slide", "Go to slide")
-        if ok and cs.isnumeric(): # current slide cs must be a number
+        cs, ok = QInputDialog.getText(self, "Go to frame", "Go to frame")
+        if ok and cs.isnumeric(): # current frame cs must be a number
             cs = int(cs)-1
-            if cs < 0: # slide out of range
+            if cs < 0: # frame out of range
                 return
-        window.mayavi_widget.visualization.update_volume(cs)
-        self.update_slide_number()
+        window.mayavi_widget.visualization.update_frame(cs)
+        self.update_frame_number()
 
     def render(self):
         self.mayavi_widget.update_annot()
 
     def change_volume_model_next(self):
-        if window.mayavi_widget.visualization.showVolume==True:
-            window.mayavi_widget.visualization.update_volume('next')
-            self.update_slide_number()
+        window.mayavi_widget.visualization.update_frame('next')
+        self.update_frame_number()
 
     def change_volume_model_previous(self):
-        if window.mayavi_widget.visualization.showVolume==True:
-            window.mayavi_widget.visualization.update_volume('previous')
-            self.update_slide_number()
+        window.mayavi_widget.visualization.update_frame('previous')
+        self.update_frame_number()
 
     def slide_left(self):
         self.change_volume_model_previous()
@@ -811,7 +786,7 @@ class MainWindow(QMainWindow): #hele raam
     def change_transparancy(self):
         new_transparancy=self.transparency_slider.value()/10
         window.mayavi_widget.visualization.transparancy=new_transparancy
-        window.mayavi_widget.visualization.update_volume(None)
+        window.mayavi_widget.visualization.update_volume()
 
     def change_sphere_size(self):
         new_size=self.sphere_size_slider.value()

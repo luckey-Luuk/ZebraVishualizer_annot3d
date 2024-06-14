@@ -28,3 +28,5 @@ The Volume button will toggle the display of the 3D cell projection
 The transparency slider will set the transparency lower or higher.\
 The Sphere size slider changes the size of the spheres used to display the annotation location.\
 
+\
+For more information about interacting with the Mayavi window, see: [https://mayavi.readthedocs.io/en/latest/application.html#interaction-with-the-scene](https://mayavi.readthedocs.io/en/latest/application.html#interaction-with-the-scene)
