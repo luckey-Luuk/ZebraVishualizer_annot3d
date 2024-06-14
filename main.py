@@ -63,8 +63,9 @@ class Visualization(HasTraits):
         self.current_point_index=0
         self.transparancy=1.0
 
-        self.showVolume=True
-        self.showTrajectory=False
+        self.show_volume=True
+        self.show_trajectory=False
+        self.show_all_trajectories=False
 
         # self.amount_of_points=20 #TODO: make more dynamic
         global amount_of_points
@@ -72,9 +73,9 @@ class Visualization(HasTraits):
         
         self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
         
-        self.mayavi_result_dots=[None for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
+        self.mayavi_trajectory_dots=[[None for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
 
-        self.mayavi_result_lines=[None for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
+        self.mayavi_trajectory_lines=[[None for p in range(amount_of_points)]for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
 
         self.mayavi_dots=[None for p in range(amount_of_points)]#location for mayavi to store individual dots
 
@@ -162,13 +163,13 @@ class Visualization(HasTraits):
             self.npspace_sf=None
     
     def toggle_volume(self): #toggle voor volume (knop), gebruikt update en remove volume
-        if self.showVolume==True:
-            self.showVolume=False
+        if self.show_volume==True:
+            self.show_volume=False
             self.remove_volume()
         else:
-            self.showVolume=True
+            self.show_volume=True
             self.update_volume()
-
+    
     def draw_trajectory(self, frame_limit, point_index): #tekent trajectory #TODO: teken 1 stap
         if self.point_location_data[self.current_frame_number][point_index][0] is not None:
             for f in range(frame_limit):
@@ -176,32 +177,43 @@ class Visualization(HasTraits):
                     x_coordinate=self.point_location_data[f][point_index][0]
                     y_coordinate=self.point_location_data[f][point_index][1]
                     z_coordinate=self.point_location_data[f][point_index][2]
-                    self.mayavi_result_dots[f]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
+                    self.mayavi_trajectory_dots[f][point_index]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
 
                 if f!=0 and self.point_location_data[f-1][point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
                     x_coordinates=[self.point_location_data[f-1][point_index][0],x_coordinate]
                     y_coordinates=[self.point_location_data[f-1][point_index][1],y_coordinate]
                     z_coordinates=[self.point_location_data[f-1][point_index][2],z_coordinate]
-                    self.mayavi_result_lines[f-1]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+                    self.mayavi_trajectory_lines[f-1][point_index]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
 
-    def remove_trajectory(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
-        for d in range(len(self.mayavi_result_dots)):
-            if self.mayavi_result_dots[d] is not None:
-                self.mayavi_result_dots[d].remove()
-                self.mayavi_result_dots[d]=None
-
-        for d in range(len(self.mayavi_result_lines)):
-            if self.mayavi_result_lines[d] is not None:
-                self.mayavi_result_lines[d].remove()
-                self.mayavi_result_lines[d]=None
+    def remove_trajectories(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
+        for f in range(self.amount_of_frames):
+            for td in range(len(self.mayavi_trajectory_dots[f])):
+                if self.mayavi_trajectory_dots[f][td] is not None:
+                    self.mayavi_trajectory_dots[f][td].remove()
+                    self.mayavi_trajectory_dots[f][td]=None
+            
+            if f!=self.amount_of_frames-1:
+                for tl in range(len(self.mayavi_trajectory_lines[f])):
+                    if self.mayavi_trajectory_lines[f][tl] is not None:
+                        self.mayavi_trajectory_lines[f][tl].remove()
+                        self.mayavi_trajectory_lines[f][tl]=None
 
     def toggle_trajectory(self): #changes showing and not showing results #toggle voor trajectory (knop)
-        if self.showTrajectory==False:
-            self.showTrajectory=True
+        if self.show_trajectory==False:
+            self.show_trajectory=True
             self.draw_trajectory(self.current_frame_number, self.current_point_index)
         else:
-            self.remove_trajectory()
-            self.showTrajectory=False
+            self.remove_trajectories()
+            self.show_trajectory=False
+
+    def toggle_all_trajectories(self):
+        if self.show_all_trajectories==False:
+            self.show_all_trajectories=True
+            for p in range(amount_of_points):
+                self.draw_trajectory(self.current_frame_number, p)
+        else:
+            self.remove_trajectories()
+            self.show_all_trajectories=False
 
     def update_frame(self,next_or_previous='next'):
         if next_or_previous=="next": #go to next frame
@@ -220,23 +232,26 @@ class Visualization(HasTraits):
             else:
                 self.current_frame_number=next_or_previous
 
-        if self.showVolume==True:
+        if self.show_volume==True:
             self.update_volume()
 
         self.redraw_all_points()
         
-        if self.showTrajectory==True:
-            self.remove_trajectory()
+        self.remove_trajectories()
+        if self.show_all_trajectories==True:
+            for p in range(amount_of_points):
+                self.draw_trajectory(self.current_frame_number, p)
+        elif self.show_trajectory==True:
             self.draw_trajectory(self.current_frame_number, self.current_point_index)
         #mlab.orientation_axes()
 
     def picker_callback(self,picker): #kijkt waar je klikt en tekent punt
-        if self.showVolume==True:
+        if self.show_volume==True:
             #print(dir(picker))
             coordinates=picker.pick_position
             self.draw_point(coordinates[0],coordinates[1],coordinates[2])
 
-    def save_data(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
+    def save_trajectory(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
         global amount_of_points
         point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames):
@@ -251,7 +266,7 @@ class Visualization(HasTraits):
             sheet.append(row)
         book.save(file_name)
 
-    def export_data(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
+    def export_trajectory(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
         global amount_of_points
         x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
         y_mod=new_y_size/self.y_lenght
@@ -375,7 +390,7 @@ class MainWindow(QMainWindow): #hele raam
     dims = (500, 500, 25) # w, h, d
     frames={}
     plane_depth = {}
-    frame_annotations = {}
+    # frame_annotations = {} TODO: kijken of hier iets mee wordt gedaan
     num_frames = 0
     npimages = -1
 
@@ -392,7 +407,7 @@ class MainWindow(QMainWindow): #hele raam
         #     sys.exit()
 
     def load_annot_dialog(self, setup=False): #TODO: check if .pkl is compatible with .tif
-        fname, _ = QFileDialog.getOpenFileName(self, 'Select file containing annotations (optional)', '.', filter="(*.pkl *.xlsx)")
+        fname, _ = QFileDialog.getOpenFileName(self, 'Select file containing trajectories (optional)', '.', filter="(*.pkl *.xlsx)")
 
         if fname.endswith('.pkl'):
             key = directory.split('/')[-1].split('_')[0]
@@ -406,7 +421,7 @@ class MainWindow(QMainWindow): #hele raam
         if not setup:
             window.mayavi_widget.visualization.update_frame()
             window.mayavi_widget.visualization.redraw_all_points()
-            if window.mayavi_widget.visualization.showTrajectory==True:
+            if window.mayavi_widget.visualization.show_trajectory==True:
                 window.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
         return
 
@@ -444,11 +459,11 @@ class MainWindow(QMainWindow): #hele raam
 
         self.num_frames = self.plane_depth[p]
 
-        self.frame_annotations = {
-            'xy': [] * d, 
-            'xz': [] * w, 
-            'yz': [] * h
-        }
+        # self.frame_annotations = {
+        #     'xy': [] * d, 
+        #     'xz': [] * w, 
+        #     'yz': [] * h
+        # }
 
     def __init__(self):
         """Text.
@@ -508,7 +523,7 @@ class MainWindow(QMainWindow): #hele raam
     
 
     # GENERAL WINDOW PROPS
-        self.setWindowTitle("Cell Annotation")
+        self.setWindowTitle("ZebraVishualizer_annot3d")
         self.setCentralWidget(w)
 
 
@@ -516,8 +531,8 @@ class MainWindow(QMainWindow): #hele raam
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point=new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index=int(new_point)
-            if self.mayavi_widget.visualization.showTrajectory==True: #change between different results if mode is result
-                self.mayavi_widget.visualization.remove_trajectory()
+            if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
+                self.mayavi_widget.visualization.remove_trajectories()
                 self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
 
         global amount_of_points
@@ -547,13 +562,13 @@ class MainWindow(QMainWindow): #hele raam
         self.volume_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.volume_button,1,0)
 
-        self.trajectory_button=QPushButton("show cell\nannotation")
+        self.trajectory_button=QPushButton("show\ntrajectory")
         self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
         self.trajectory_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.trajectory_button,1,1)
 
-        self.all_trajectories_button=QPushButton("show all\nannotations")
-        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        self.all_trajectories_button=QPushButton("show all\ntrajectories")
+        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
         self.all_trajectories_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.all_trajectories_button,1,2)
 
@@ -698,19 +713,19 @@ class MainWindow(QMainWindow): #hele raam
         exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(self.close)
 
-        loadAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/load.png')), 'Load annotations', self)
+        loadAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/load.png')), 'Load trajectories', self)
         loadAnnotAction.setShortcut(QKeySequence.Open) # Ctrl+O
-        loadAnnotAction.setStatusTip('Load new annotations file')
+        loadAnnotAction.setStatusTip('Load file containing trajectories')
         loadAnnotAction.triggered.connect(self.load_annot_dialog)
 
-        saveAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/save.png')), 'Save annotations', self)
+        saveAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/save.png')), 'Save trajectories', self)
         saveAnnotAction.setShortcut(QKeySequence.Save) # Ctrl+S
-        saveAnnotAction.setStatusTip('Save annotations file')
+        saveAnnotAction.setStatusTip('Save trajectories in a .xlsx file')
         saveAnnotAction.triggered.connect(self.save_annots_dialog)
 
         exportAction = QAction(QIcon(get_filled_pixmap('graphics/render.png')), 'Export dataset', self)
         exportAction.setShortcut('Ctrl+E')
-        exportAction.setStatusTip('Export source and annotations as dataset directory')
+        exportAction.setStatusTip('Export source and trajectories as dataset directory')
         exportAction.triggered.connect(self.export_dialog)
 
         #'goto' knop
@@ -761,10 +776,10 @@ class MainWindow(QMainWindow): #hele raam
     #wat alle knoppen doen
     #dialoog windows voor save en export
     def save_annots_dialog(self):
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save trajectories', '.',"*.xlsx")
         #global annot3D
         if fname:
-            window.mayavi_widget.visualization.save_data(fname)  
+            window.mayavi_widget.visualization.save_trajectory(fname)  
 
     def export_dialog(self):
         outcome=self.popup.exec() # use .exec_() for Python 3.10.10
@@ -773,9 +788,9 @@ class MainWindow(QMainWindow): #hele raam
         x_size=self.x_input.value()
         y_size=self.y_input.value()
         z_size=self.z_input.value()
-        fname, _ = QFileDialog.getSaveFileName(self, 'Save annotations file', '.',"*.xlsx")
+        fname, _ = QFileDialog.getSaveFileName(self, 'Save dataset directory', '.',"*.xlsx")
         if fname:
-            window.mayavi_widget.visualization.export_data(fname,x_size,y_size,z_size)
+            window.mayavi_widget.visualization.export_trajectory(fname,x_size,y_size,z_size)
 
     def update_frame_number(self): #used to change frame number display
         frame_number=self.mayavi_widget.visualization.current_frame_number
