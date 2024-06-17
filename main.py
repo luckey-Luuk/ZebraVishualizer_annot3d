@@ -28,10 +28,10 @@ COLORS = {
     '#ffd035': [255, 208, 53, 255],
 }
 
-ERASER_COLOR_RGBA = [255, 255, 255, 255]
+# ERASER_COLOR_RGBA = [255, 255, 255, 255]
 INIT_COLOR_RGBA = COLORS['#ff0000']
 
-p = 'xy' # xy initially, yz, xz
+# p = 'xy' # xy initially, yz, xz TODO: kijken of hier iets mee wordt gedaan
 current_frame = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
@@ -57,38 +57,41 @@ class Visualization(HasTraits):
 
     def update_plot(self): #initializatie
         global directory
-        self.image_dictionary=create_image_dict(directory)
-        self.amount_of_frames=len(self.image_dictionary)
-        self.current_frame_number=0
-        self.current_point_index=0
-        self.transparancy=1.0
+        self.image_dictionary = create_image_dict(directory)
+        self.amount_of_frames = len(self.image_dictionary)
+        self.current_frame_number = 0
+        self.current_point_index = 0
+        self.transparancy = 1.0
 
-        self.show_volume=True
-        self.show_trajectory=False
-        self.show_all_trajectories=False
+        self.show_volume = True
+        self.show_trajectory = False
+        self.show_all_trajectories = False
 
         # self.amount_of_points=20 #TODO: make more dynamic
-        global amount_of_points
-        self.colour_array=create_colour_array()
+        self.colour_array = create_colour_array()
         
-        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #information of point locations in every time step
+        # self.point_location_data = [ [ [None]*3 for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #information of point locations in every time step
+        self.point_location_data=[{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts om problemen met amount_of_points op te lossen
         
-        self.mayavi_trajectory_dots=[[None for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
+        # self.mayavi_trajectory_dots = [ [None for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
+        self.mayavi_trajectory_dots = [{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts
 
-        self.mayavi_trajectory_lines=[[None for p in range(amount_of_points)]for f in range(self.amount_of_frames-1)] #for mayavi to store lines for the display view
+        # self.mayavi_trajectory_lines = [ [None for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #for mayavi to store lines for the display view
+        self.mayavi_trajectory_lines = [{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts
 
-        self.mayavi_dots=[None for p in range(amount_of_points)]#location for mayavi to store individual dots
+        # self.mayavi_dots = [None for p in range(amount_of_points)] #location for mayavi to store individual dots
+        self.mayavi_dots = {} #TODO: verander in lijst van dicts
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
-        global annot3D
+        # global annot3D
         npimages = annot3D.get_npimages()
 
-        self.x_lenght=len(npimages[0][0])
-        self.y_lenght=len(npimages[0])
-        self.z_lenght=len(npimages)
+        self.x_lenght = len(npimages[0][0])
+        self.y_lenght = len(npimages[0])
+        self.z_lenght = len(npimages)
 
-        self.sphere_size=10
+        self.sphere_size = 10
 
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
@@ -104,48 +107,42 @@ class Visualization(HasTraits):
         #update point data
         self.point_location_data[self.current_frame_number][self.current_point_index]=[new_x,new_y,new_z]
         #draw new point
-        if self.mayavi_dots[self.current_point_index] is not None:
+        if self.current_point_index in self.mayavi_dots:
             self.mayavi_dots[self.current_point_index].remove()
-            self.mayavi_dots[self.current_point_index]=None
-        self.mayavi_dots[self.current_point_index]=mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=self.sphere_size)
+            del self.mayavi_dots[self.current_point_index]
+            
+        self.mayavi_dots[self.current_point_index] = mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def draw_previous_point(self): #places the point in the same location as it was in the previous image number
-        if self.current_frame_number==0: #there is no previous point for index 0
-            return
-        elif self.point_location_data[self.current_frame_number-1][self.current_point_index][0]==None: #check if previous dot location is not None
-            return
-        new_location=self.point_location_data[self.current_frame_number-1][self.current_point_index]
-        self.draw_point(new_location[0],new_location[1],new_location[2])
+        if self.current_frame_number!=0 and self.current_point_index in self.point_location_data[self.current_frame_number-1]:
+            new_location = self.point_location_data[self.current_frame_number-1][self.current_point_index]
+            self.draw_point(new_location[0],new_location[1],new_location[2])
 
     def delete_point(self):
-        #update point data
-        self.point_location_data[self.current_frame_number][self.current_point_index]=[None,None,None]
-        #delete point
-        if self.mayavi_dots[self.current_point_index] is not None:
+        if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            del self.point_location_data[self.current_frame_number][self.current_point_index]
+        if self.current_point_index in self.mayavi_dots:
             self.mayavi_dots[self.current_point_index].remove()
-            self.mayavi_dots[self.current_point_index]=None
+            del self.mayavi_dots[self.current_point_index]
 
-    def delete_all_points(self):
-        global amount_of_points
+    def delete_all_points(self): #TODO: kijk of dit weg/samengevoegd met delete_point kan
         for p in range(amount_of_points):
-            if self.mayavi_dots[p] is not None:
+            if p in self.mayavi_dots:
                 self.mayavi_dots[p].remove()
-                self.mayavi_dots[p]=None
+                del self.mayavi_dots[p]
 
     def redraw_all_points(self): #redraws all points, used to update points for the next timestep
         self.delete_all_points()
-        global amount_of_points
         for p in range(amount_of_points):
-            if self.point_location_data[self.current_frame_number][p][0] is not None: #check if x cordinate is not no to see if a point needs to be placed
-                self.mayavi_dots[p]=mlab.points3d(self.point_location_data[self.current_frame_number][p][0],self.point_location_data[self.current_frame_number][p][1],self.point_location_data[self.current_frame_number][p][2],color=self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
+            if p in self.point_location_data[self.current_frame_number]:
+                self.mayavi_dots[p] = mlab.points3d(self.point_location_data[self.current_frame_number][p][0],self.point_location_data[self.current_frame_number][p][1],self.point_location_data[self.current_frame_number][p][2],color = self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
 
     def add_value_to_point(self,added_value):
-        old_value=self.point_location_data[self.current_frame_number][self.current_point_index]
-        if old_value[0] is not None:#check if value exists 
+        if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            old_value = self.point_location_data[self.current_frame_number][self.current_point_index]
             self.draw_point(old_value[0]+added_value[0],old_value[1]+added_value[1],old_value[2]+added_value[2])
 
     def update_volume(self):
-        global directory
         window.load_source_file(directory+'/'+self.image_dictionary[self.current_frame_number])
         npimages = annot3D.get_npimages()
         if self.volume is not None:
@@ -158,158 +155,266 @@ class Visualization(HasTraits):
     def remove_volume(self):
         if self.volume is not None: #can't be removed if it isn't there in the first place
             self.volume.remove()
-            self.volume=None
+            self.volume = None
             self.npspace_sf.remove()
-            self.npspace_sf=None
+            self.npspace_sf = None
     
     def toggle_volume(self): #toggle voor volume (knop), gebruikt update en remove volume
         if self.show_volume==True:
-            self.show_volume=False
+            self.show_volume = False
             self.remove_volume()
         else:
-            self.show_volume=True
+            self.show_volume = True
             self.update_volume()
     
-    def draw_trajectory(self, frame_limit, point_index): #tekent trajectory #TODO: teken 1 stap
-        if self.point_location_data[self.current_frame_number][point_index][0] is not None:
-            for f in range(frame_limit):
-                if self.point_location_data[f][point_index][0] is not None: #check if point exists #teken punt
-                    x_coordinate=self.point_location_data[f][point_index][0]
-                    y_coordinate=self.point_location_data[f][point_index][1]
-                    z_coordinate=self.point_location_data[f][point_index][2]
-                    self.mayavi_trajectory_dots[f][point_index]=mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
+    def draw_trajectory_step(self, frame, point_index): #tekent trajectory #TODO: teken 1 stap
+        if frame!=0 and point_index in self.point_location_data[frame]: #check if point exists #teken punt
+            x_coordinate = self.point_location_data[frame][point_index][0]
+            y_coordinate = self.point_location_data[frame][point_index][1]
+            z_coordinate = self.point_location_data[frame][point_index][2]
+            self.mayavi_trajectory_dots[frame][point_index] = mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
 
-                if f!=0 and self.point_location_data[f-1][point_index][0]!=None: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
-                    x_coordinates=[self.point_location_data[f-1][point_index][0],x_coordinate]
-                    y_coordinates=[self.point_location_data[f-1][point_index][1],y_coordinate]
-                    z_coordinates=[self.point_location_data[f-1][point_index][2],z_coordinate]
-                    self.mayavi_trajectory_lines[f-1][point_index]=mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+            if point_index in self.point_location_data[frame-1]: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
+                x_coordinates = [self.point_location_data[frame-1][point_index][0],x_coordinate]
+                y_coordinates = [self.point_location_data[frame-1][point_index][1],y_coordinate]
+                z_coordinates = [self.point_location_data[frame-1][point_index][2],z_coordinate]
+                self.mayavi_trajectory_lines[frame][point_index] = mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+    
+    def draw_trajectory(self, frame, point_index):
+        for f in range(frame+1):
+            self.draw_trajectory_step(f, point_index)
 
-    def remove_trajectories(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
-        for f in range(self.amount_of_frames):
-            for td in range(len(self.mayavi_trajectory_dots[f])):
-                if self.mayavi_trajectory_dots[f][td] is not None:
-                    self.mayavi_trajectory_dots[f][td].remove()
-                    self.mayavi_trajectory_dots[f][td]=None
-            
-            if f!=self.amount_of_frames-1:
-                for tl in range(len(self.mayavi_trajectory_lines[f])):
-                    if self.mayavi_trajectory_lines[f][tl] is not None:
-                        self.mayavi_trajectory_lines[f][tl].remove()
-                        self.mayavi_trajectory_lines[f][tl]=None
+    def remove_trajectory_step(self, f, p):
+        if p in self.mayavi_trajectory_dots[f]:
+            self.mayavi_trajectory_dots[f][p].remove()
+            del self.mayavi_trajectory_dots[f][p]
+        
+        if p in self.mayavi_trajectory_lines[f]:
+            self.mayavi_trajectory_lines[f][p].remove()
+            del self.mayavi_trajectory_lines[f][p]
+    
+    def remove_trajectory(self, frame, point_index):
+        for f in range(frame+1):
+            self.remove_trajectory_step(f, point_index)
+
+    def remove_all_trajectories(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
+        for p in range(amount_of_points-1):
+            self.remove_trajectory(self.amount_of_frames-1, p)
+        
 
     def toggle_trajectory(self): #changes showing and not showing results #toggle voor trajectory (knop)
         if self.show_trajectory==False:
-            self.show_trajectory=True
+            self.show_trajectory = True
             self.draw_trajectory(self.current_frame_number, self.current_point_index)
         else:
-            self.remove_trajectories()
-            self.show_trajectory=False
+            self.remove_all_trajectories()
+            self.show_trajectory = False
 
     def toggle_all_trajectories(self):
         if self.show_all_trajectories==False:
-            self.show_all_trajectories=True
+            self.show_all_trajectories = True
             for p in range(amount_of_points):
                 self.draw_trajectory(self.current_frame_number, p)
         else:
-            self.remove_trajectories()
-            self.show_all_trajectories=False
+            self.remove_all_trajectories()
+            self.show_all_trajectories = False
 
-    def update_frame(self,next_or_previous='next'):
-        if next_or_previous=="next": #go to next frame
-            if self.current_frame_number==self.amount_of_frames-1:
-                self.current_frame_number=0 #loop around
-            else:
-                self.current_frame_number+=1
-        elif next_or_previous=="previous": #go to previous frame
-            if self.current_frame_number==0:
-                self.current_frame_number=self.amount_of_frames-1 #loop around
-            else:
-                self.current_frame_number-=1
-        elif isinstance(next_or_previous,int): #used for goto function to go to a specific frame
-            if self.amount_of_frames-1<next_or_previous:
-                self.current_frame_number=self.amount_of_frames-1
-            else:
-                self.current_frame_number=next_or_previous
+    #gesplitst in next_frame, previous_frame en goto_frame
+    # def update_frame(self,next_or_previous='next'):
+    #     if next_or_previous=="next": #go to next frame
+    #         if self.current_frame_number==self.amount_of_frames-1:
+    #             self.current_frame_number = 0 #loop around
+    #         else:
+    #             self.current_frame_number += 1
+    #     elif next_or_previous=="previous": #go to previous frame
+    #         if self.current_frame_number==0:
+    #             self.current_frame_number = self.amount_of_frames-1 #loop around
+    #         else:
+    #             self.current_frame_number -= 1
+    #     elif isinstance(next_or_previous,int): #used for goto function to go to a specific frame
+    #         if self.amount_of_frames-1<next_or_previous:
+    #             self.current_frame_number = self.amount_of_frames-1
+    #         else:
+    #             self.current_frame_number = next_or_previous
+
+    #     if self.show_volume==True:
+    #         self.update_volume()
+
+    #     self.redraw_all_points()
+        
+    #     self.remove_all_trajectories()
+    #     if self.show_all_trajectories==True:
+    #         for p in range(amount_of_points):
+    #             self.draw_trajectory(self.current_frame_number, p)
+    #     elif self.show_trajectory==True:
+    #         self.draw_trajectory(self.current_frame_number, self.current_point_index)
+    #     #mlab.orientation_axes()
+
+    def next_frame(self):
+        if self.current_frame_number==self.amount_of_frames-1:
+            self.current_frame_number = 0 #loop around
+
+            self.remove_all_trajectories()
+            if self.show_all_trajectories==True:
+                for p in range(amount_of_points):
+                    if p in self.point_location_data[self.current_frame_number]: #TODO: plaats deze if-statements in draw_trajectory?
+                        self.draw_trajectory(self.current_frame_number, p)
+            elif self.show_trajectory==True:
+                if self.current_point_index in self.point_location_data[self.current_frame_number]:
+                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+
+        else:
+            self.current_frame_number += 1
+
+            if self.show_all_trajectories==True:
+                for p in range(amount_of_points):
+                    if p in self.point_location_data[self.current_frame_number]: #TODO: plaats deze if-statements in draw_trajectory?
+                        if p in self.point_location_data[self.current_frame_number-1]:
+                            self.draw_trajectory_step(self.current_frame_number, p)
+                        else:
+                            self.draw_trajectory(self.current_frame_number, p)
+                    else:
+                        self.remove_trajectory(self.current_frame_number, p)
+            elif self.show_trajectory==True:
+                if self.current_point_index in self.point_location_data[self.current_frame_number]:
+                    if self.current_point_index in self.point_location_data[self.current_frame_number-1]:
+                        self.draw_trajectory_step(self.current_frame_number, self.current_point_index)
+                    else:
+                        self.draw_trajectory(self.current_frame_number, self.current_point_index)
+                else:
+                    self.remove_trajectory(self.current_frame_number, self.current_point_index)
+
+        if self.show_volume==True:
+            self.update_volume()
+
+        self.redraw_all_points()
+        #mlab.orientation_axes()
+
+    def previous_frame(self):
+        if self.current_frame_number==0:
+            self.current_frame_number = self.amount_of_frames-1 #loop around
+
+            self.remove_all_trajectories()
+            if self.show_all_trajectories==True:
+                for p in range(amount_of_points-1):
+                    if p in self.point_location_data[self.current_frame_number]:
+                        self.draw_trajectory(self.current_frame_number, p)
+            elif self.show_trajectory==True:
+                if self.current_point_index in self.point_location_data[self.current_frame_number]:
+                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+
+        else:
+            self.current_frame_number -= 1
+
+            if self.show_all_trajectories==True:
+                for p in range(amount_of_points-1):
+                    if p in self.point_location_data[self.current_frame_number+1]:
+                        if p in self.point_location_data[self.current_frame_number]:
+                            self.remove_trajectory_step(self.current_frame_number+1, p)
+                        else:
+                            self.remove_trajectory(self.current_frame_number+1, p)
+                    elif p in self.point_location_data[self.current_frame_number]:
+                        self.draw_trajectory(self.current_frame_number, p)
+            elif self.show_trajectory==True:
+                if self.current_point_index in self.point_location_data[self.current_frame_number+1]:
+                    if self.current_point_index in self.point_location_data[self.current_frame_number]:
+                        self.remove_trajectory_step(self.current_frame_number+1, self.current_point_index)
+                    else:
+                        self.remove_trajectory(self.current_frame_number+1, self.current_point_index)
+                elif self.current_point_index in self.point_location_data[self.current_frame_number]:
+                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+
+        if self.show_volume==True:
+            self.update_volume()
+
+        self.redraw_all_points()
+
+        #mlab.orientation_axes()
+
+    def goto_frame(self, frame_number):
+        if self.amount_of_frames-1<frame_number:
+            self.current_frame_number = self.amount_of_frames-1
+        else:
+            self.current_frame_number = frame_number
 
         if self.show_volume==True:
             self.update_volume()
 
         self.redraw_all_points()
         
-        self.remove_trajectories()
+        self.remove_all_trajectories()
         if self.show_all_trajectories==True:
-            for p in range(amount_of_points):
-                self.draw_trajectory(self.current_frame_number, p)
+            for p in range(amount_of_points-1):
+                if p in self.point_location_data[self.current_frame_number]:
+                    self.draw_trajectory(self.current_frame_number, p)
         elif self.show_trajectory==True:
-            self.draw_trajectory(self.current_frame_number, self.current_point_index)
+            if self.current_point_index in self.point_location_data[self.current_frame_number]:
+                self.draw_trajectory(self.current_frame_number, self.current_point_index)
         #mlab.orientation_axes()
 
     def picker_callback(self,picker): #kijkt waar je klikt en tekent punt
         if self.show_volume==True:
             #print(dir(picker))
-            coordinates=picker.pick_position
+            coordinates = picker.pick_position
             self.draw_point(coordinates[0],coordinates[1],coordinates[2])
 
-    def save_trajectory(self,file_name="test_file"): #knop save annotations, sla lijst met punten op in excel
-        global amount_of_points
-        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+    def save_trajectory(self,file_name = "test_file"): #knop save annotations, sla lijst met punten op in excel
+        point_data_list = [] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames):
             for p in range(amount_of_points):
-                if self.point_location_data[f][p][0] is not None:
+                if p in self.point_location_data[f]:
                     point_data_list.append([f,p,self.point_location_data[f][p][0],self.point_location_data[f][p][1],self.point_location_data[f][p][2]])
 
-        book=Workbook()
-        sheet=book.active
+        book = Workbook()
+        sheet = book.active
         sheet.append(["timestep","dot","x","y","z"])
         for row in point_data_list:
             sheet.append(row)
         book.save(file_name)
 
     def export_trajectory(self,file_name,new_x_size,new_y_size,new_z_size): #zelfde als save data, maar met meer: rekent afstand tussen punten uit en voer werkelijke grootte in
-        global amount_of_points
-        x_mod=new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
-        y_mod=new_y_size/self.y_lenght
-        z_mod=new_z_size/self.z_lenght
-        point_data_list=[] #meant to put in data from point_location_data that is not None, later used for export to excel
+        x_mod = new_x_size/self.x_lenght #the multiplyer to correct the cordinates to the real size
+        y_mod = new_y_size/self.y_lenght
+        z_mod = new_z_size/self.z_lenght
+        point_data_list = [] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames): #for every slice number
             for p in range(amount_of_points): #for every tracking number
-                if self.point_location_data[f][p][0] is not None:
-                    x=self.point_location_data[f][p][0]*x_mod
-                    y=self.point_location_data[f][p][1]*y_mod
-                    z=self.point_location_data[f][p][2]*z_mod
+                if p in self.point_location_data[f][p][0]:
+                    x = self.point_location_data[f][p][0]*x_mod
+                    y = self.point_location_data[f][p][1]*y_mod
+                    z = self.point_location_data[f][p][2]*z_mod
                     point_data_list.append([p,f,z,y,x,-1]) #the x and z are switched during data import, that is why they are switched back in export
-        encounterd_points=[]
+        encounterd_points = []
         for i in range(len(point_data_list)):
             for j in encounterd_points:
                 if point_data_list[i][0]==j[0] and point_data_list[i][1]==j[1]+1:
                     encounterd_points.remove(j)
-                    x_exponent=math.pow(point_data_list[i][2]-j[2],2)
-                    y_exponent=math.pow(point_data_list[i][3]-j[3],2)
-                    z_exponent=math.pow(point_data_list[i][4]-j[4],2)
-                    point_data_list[i][5]=math.sqrt(x_exponent+y_exponent+z_exponent)
+                    x_exponent = math.pow(point_data_list[i][2]-j[2],2)
+                    y_exponent = math.pow(point_data_list[i][3]-j[3],2)
+                    z_exponent = math.pow(point_data_list[i][4]-j[4],2)
+                    point_data_list[i][5] = math.sqrt(x_exponent+y_exponent+z_exponent)
                     break
             encounterd_points.append(point_data_list[i])
 
-        book=Workbook()
-        sheet=book.active
+        book = Workbook()
+        sheet = book.active
         sheet.append(["tracking number","slice number","x","y","z","Distance"])
         for row in point_data_list:
             sheet.append(row)
         book.save(file_name)
 
     def load_xlsx(self,file_name="test_file.xlsx"): #knop load annotations TODO: change self.amount_of_points to max value in dot column
-        book=load_workbook(filename=file_name)
-        sheet=book.active
+        book = load_workbook(filename=file_name)
+        sheet = book.active
 
         global amount_of_points
-        amount_of_points=max(cell.value for cell in sheet['B'][1:])+1
-        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)] #set data back to None to remove old data
-        self.mayavi_dots=[None for p in range(amount_of_points)]
+        amount_of_points = max(cell.value for cell in sheet['B'][1:])+1
+        self.point_location_data = [{} for f in range(self.amount_of_frames)] #set data back to None to remove old data
+        self.mayavi_dots = {}
 
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
-                self.point_location_data[row[0]][row[1]]=[row[2],row[3],row[4]]
+                self.point_location_data[row[0]][row[1]] = [row[2],row[3],row[4]]
         self.redraw_all_points()
     
     def load_pkl(self, pkl_dict):
@@ -327,8 +432,8 @@ class Visualization(HasTraits):
         
         global amount_of_points
         amount_of_points = len(pkl_dict)
-        self.point_location_data=[[[None]*3 for p in range(amount_of_points)]for f in range(self.amount_of_frames)]
-        self.mayavi_dots=[None for p in range(amount_of_points)]
+        self.point_location_data = [{} for f in range(self.amount_of_frames)]
+        self.mayavi_dots = {}
         for f in range(self.amount_of_frames):
             for p in range(amount_of_points):
                 if f in linked_centroids[p]:
@@ -387,11 +492,11 @@ class MainWindow(QMainWindow): #hele raam
     """
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
-    dims = (500, 500, 25) # w, h, d
-    frames={}
-    plane_depth = {}
+    # dims = (500, 500, 25) # w, h, d TODO: kijken of hier iets mee wordt gedaan
+    frames = {}
+    # plane_depth = {} TODO: kijken of hier iets mee wordt gedaan
     # frame_annotations = {} TODO: kijken of hier iets mee wordt gedaan
-    num_frames = 0
+    # num_frames = 0 TODO: kijken of hier iets mee wordt gedaan
     npimages = -1
 
     pkl_dict = None
@@ -419,10 +524,10 @@ class MainWindow(QMainWindow): #hele raam
             return
 
         if not setup:
-            window.mayavi_widget.visualization.update_frame()
-            window.mayavi_widget.visualization.redraw_all_points()
-            if window.mayavi_widget.visualization.show_trajectory==True:
-                window.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
+            window.mayavi_widget.visualization.goto_frame(self.mayavi_widget.visualization.current_frame_number)
+            # window.mayavi_widget.visualization.redraw_all_points()
+            # if window.mayavi_widget.visualization.show_trajectory==True:
+            #     window.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
         return
 
     def load_source_file(self, filename): #uit annot3D, nodig
@@ -437,7 +542,8 @@ class MainWindow(QMainWindow): #hele raam
         -------
         None
         """
-        global COLORS, p, current_frame, annot3D
+        # global COLORS, p, current_frame, annot3D
+        global annot3D
 
         self.frames['xy'], self.frames['xz'], self.frames['yz'] = read_tiff(filename)
 
@@ -449,21 +555,29 @@ class MainWindow(QMainWindow): #hele raam
 
         annot3D = AnnotationSpace3D(self.npimages, (d, w, h), INIT_COLOR_RGBA)
 
-        self.plane_depth = {
-            'xy': d,
-            'xz': w,
-            'yz': h
-        }
+        # self.plane_depth = {
+        #     'xy': d,
+        #     'xz': w,
+        #     'yz': h
+        # }
 
-        self.dims = (w, h, d)
+        # self.dims = (w, h, d)
 
-        self.num_frames = self.plane_depth[p]
+        # self.num_frames = self.plane_depth[p]
 
         # self.frame_annotations = {
         #     'xy': [] * d, 
         #     'xz': [] * w, 
         #     'yz': [] * h
         # }
+    
+    def animate(self):
+        @mlab.animate(delay=100)
+        def anim():
+            while True:
+                self.change_volume_model_next()
+                yield
+        anim()
 
     def __init__(self):
         """Text.
@@ -482,8 +596,7 @@ class MainWindow(QMainWindow): #hele raam
     # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
         self.load_tiff_dialog()
 
-        global directory
-        temp_dict=create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
+        temp_dict = create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
         self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
 
         # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
@@ -500,10 +613,10 @@ class MainWindow(QMainWindow): #hele raam
         canvas = QGridLayout()
         canvas.setAlignment(Qt.AlignLeft)
         sub_canvas_adjustments = QGridLayout()
-        sub_canvas_functions=QGridLayout()
+        sub_canvas_functions = QGridLayout()
         sub_canvas_transparancy_bar = QGridLayout()
-        sub_canvas_size_bar= QGridLayout()
-        sub_canvas_frames=QGridLayout()
+        sub_canvas_size_bar = QGridLayout()
+        sub_canvas_frames = QGridLayout()
 
     # TOOLBAR, STATUSBAR, MENU #toolbar waar nu "file" op staat
         self.setup_bar_actions()
@@ -529,45 +642,44 @@ class MainWindow(QMainWindow): #hele raam
 
         # Sub canvas grid for several functions and cell selection
         def change_selected_point(new_point): #leest welke aangeklikt is
-            new_point=new_point.split(" ")[1] #split the string and take the number
-            self.mayavi_widget.visualization.current_point_index=int(new_point)
+            new_point = new_point.split(" ")[1] #split the string and take the number
+            self.mayavi_widget.visualization.current_point_index = int(new_point)
             if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
-                self.mayavi_widget.visualization.remove_trajectories()
+                self.mayavi_widget.visualization.remove_all_trajectories()
                 self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
 
-        global amount_of_points
-        point_list=[]   #list for the selectable points in the combobox
-        for i in range(amount_of_points):
+        point_list = []   #list for the selectable points in the combobox
+        for i in range(amount_of_points): #TODO: verander als trajectory met meer punten wordt geladen
             point_list.append("cell "+str(i))
 
-        selection_box=QComboBox()
+        selection_box = QComboBox()
         selection_box.addItems(point_list)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
         selection_box.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(selection_box,0,0)
 
-        self.continue_button=QPushButton('copy previous\nannotation')
+        self.continue_button = QPushButton('copy previous\nannotation')
         self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
         self.continue_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.continue_button,0,1)
 
-        self.delete_button=QPushButton('delete\nannotation') #'delete' is wat er op knop staat
+        self.delete_button = QPushButton('delete\nannotation') #'delete' is wat er op knop staat
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
         self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
         sub_canvas_functions.addWidget(self.delete_button,0,2) #plaats knop op grid (self.knop, x op grid, y op grid)
 
 
-        self.volume_button=QPushButton('show\nimage')
+        self.volume_button = QPushButton('show\nimage')
         self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
         self.volume_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.volume_button,1,0)
 
-        self.trajectory_button=QPushButton("show\ntrajectory")
+        self.trajectory_button = QPushButton("show\ntrajectory")
         self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
         self.trajectory_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.trajectory_button,1,1)
 
-        self.all_trajectories_button=QPushButton("show all\ntrajectories")
+        self.all_trajectories_button = QPushButton("show all\ntrajectories")
         self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
         self.all_trajectories_button.setMinimumSize(50,50)
         sub_canvas_functions.addWidget(self.all_trajectories_button,1,2)
@@ -587,7 +699,7 @@ class MainWindow(QMainWindow): #hele raam
         sub_canvas_adjustments.addWidget(self.z_label,2,1)
 
         def create_button(self,text,update=[0,0,0]): #function to create standard button
-            self.button=QPushButton(text)
+            self.button = QPushButton(text)
             self.button.setFixedWidth(20)
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
             # self.button.setMinimumSize(60,60)
@@ -683,14 +795,14 @@ class MainWindow(QMainWindow): #hele raam
         y_axis_label = QLabel('Y axis size')
         z_axis_label = QLabel('Z axis size')
 
-        self.x_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.x_lenght)
-        self.y_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.y_lenght)
-        self.z_input=QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.z_lenght)
+        self.x_input = QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.x_lenght)
+        self.y_input = QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.y_lenght)
+        self.z_input = QSpinBox(maximum=10000,value=self.mayavi_widget.visualization.z_lenght)
 
-        accept_button=QPushButton('export')
+        accept_button = QPushButton('export')
         accept_button.clicked.connect(self.popup.accept)
 
-        cancel_button=QPushButton('cancel')
+        cancel_button = QPushButton('cancel')
         cancel_button.clicked.connect(self.popup.reject)
 
 
@@ -782,41 +894,41 @@ class MainWindow(QMainWindow): #hele raam
             window.mayavi_widget.visualization.save_trajectory(fname)  
 
     def export_dialog(self):
-        outcome=self.popup.exec() # use .exec_() for Python 3.10.10
+        outcome = self.popup.exec() # use .exec_() for Python 3.10.10
         if outcome==0: #don't do rest of function if cancel button has been pressed
             return
-        x_size=self.x_input.value()
-        y_size=self.y_input.value()
-        z_size=self.z_input.value()
+        x_size = self.x_input.value()
+        y_size = self.y_input.value()
+        z_size = self.z_input.value()
         fname, _ = QFileDialog.getSaveFileName(self, 'Save dataset directory', '.',"*.xlsx")
         if fname:
             window.mayavi_widget.visualization.export_trajectory(fname,x_size,y_size,z_size)
 
     def update_frame_number(self): #used to change frame number display
-        frame_number=self.mayavi_widget.visualization.current_frame_number
-        text="frame "+str(frame_number)+"/"+str(self.mayavi_widget.visualization.amount_of_frames-1)
+        frame_number = self.mayavi_widget.visualization.current_frame_number
+        text = "frame "+str(frame_number)+"/"+str(self.mayavi_widget.visualization.amount_of_frames-1)
         self.frame_label.setText(text)
 
     def goto_frame(self): #'goto' knop popup
-        global p, annot3D
+        # global p, annot3D
 
         cs, ok = QInputDialog.getText(self, "Go to frame", "Go to frame")
         if ok and cs.isnumeric(): # current frame cs must be a number
             cs = int(cs)
             if cs < 0: # frame out of range
                 return
-        window.mayavi_widget.visualization.update_frame(cs)
+        window.mayavi_widget.visualization.goto_frame(cs)
         self.update_frame_number()
 
     def render(self):
         self.mayavi_widget.update_annot()
 
     def change_volume_model_next(self):
-        window.mayavi_widget.visualization.update_frame('next')
+        window.mayavi_widget.visualization.next_frame()
         self.update_frame_number()
 
     def change_volume_model_previous(self):
-        window.mayavi_widget.visualization.update_frame('previous')
+        window.mayavi_widget.visualization.previous_frame()
         self.update_frame_number()
 
     def slide_left(self):
@@ -826,22 +938,14 @@ class MainWindow(QMainWindow): #hele raam
         self.change_volume_model_next()
 
     def change_transparancy(self):
-        new_transparancy=self.transparency_slider.value()/10
-        window.mayavi_widget.visualization.transparancy=new_transparancy
+        new_transparancy = self.transparency_slider.value()/10
+        window.mayavi_widget.visualization.transparancy = new_transparancy
         window.mayavi_widget.visualization.update_volume()
 
     def change_sphere_size(self):
-        new_size=self.sphere_size_slider.value()
-        window.mayavi_widget.visualization.sphere_size=new_size
+        new_size = self.sphere_size_slider.value()
+        window.mayavi_widget.visualization.sphere_size = new_size
         window.mayavi_widget.visualization.redraw_all_points()
-
-    def animate(self):
-        @mlab.animate(delay=100)
-        def anim():
-            while True:
-                self.change_volume_model_next()
-                yield
-        anim()
 
 
 if __name__ == "__main__":
