@@ -67,20 +67,15 @@ class Visualization(HasTraits):
         self.show_trajectory = False
         self.show_all_trajectories = False
 
-        # self.amount_of_points=20 #TODO: make more dynamic
         self.colour_array = create_colour_array()
         
-        # self.point_location_data = [ [ [None]*3 for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #information of point locations in every time step
-        self.point_location_data=[{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts om problemen met amount_of_points op te lossen
+        self.point_location_data=[{} for f in range(self.amount_of_frames)] #information of point locations in every time step
         
-        # self.mayavi_trajectory_dots = [ [None for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
-        self.mayavi_trajectory_dots = [{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts
+        self.mayavi_trajectory_dots = [{} for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
 
-        # self.mayavi_trajectory_lines = [ [None for p in range(amount_of_points)] for f in range(self.amount_of_frames)] #for mayavi to store lines for the display view
-        self.mayavi_trajectory_lines = [{} for f in range(self.amount_of_frames)] #TODO: verander in lijst van dicts
+        self.mayavi_trajectory_lines = [{} for f in range(self.amount_of_frames)] #for mayavi to store lines for the display view
 
-        # self.mayavi_dots = [None for p in range(amount_of_points)] #location for mayavi to store individual dots
-        self.mayavi_dots = {} #TODO: verander in lijst van dicts
+        self.mayavi_dots = {}#location for mayavi to store individual dots
 
         self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
 
@@ -257,7 +252,7 @@ class Visualization(HasTraits):
             self.remove_all_trajectories()
             if self.show_all_trajectories==True:
                 for p in range(amount_of_points):
-                    if p in self.point_location_data[self.current_frame_number]: #TODO: plaats deze if-statements in draw_trajectory?
+                    if p in self.point_location_data[self.current_frame_number]:
                         self.draw_trajectory(self.current_frame_number, p)
             elif self.show_trajectory==True:
                 if self.current_point_index in self.point_location_data[self.current_frame_number]:
@@ -268,12 +263,14 @@ class Visualization(HasTraits):
 
             if self.show_all_trajectories==True:
                 for p in range(amount_of_points):
-                    if p in self.point_location_data[self.current_frame_number]: #TODO: plaats deze if-statements in draw_trajectory?
+                    if p in self.point_location_data[self.current_frame_number]:
                         if p in self.point_location_data[self.current_frame_number-1]:
                             self.draw_trajectory_step(self.current_frame_number, p)
                         else:
                             self.draw_trajectory(self.current_frame_number, p)
                     else:
+                        # for f in range(self.current_frame_number+1,self.amount_of_frames): #TODO: alleen trajectory niet laten zien als die niet meer komt
+                        #     if p in self.point_location_data[f]:
                         self.remove_trajectory(self.current_frame_number, p)
             elif self.show_trajectory==True:
                 if self.current_point_index in self.point_location_data[self.current_frame_number]:
@@ -441,7 +438,10 @@ class Visualization(HasTraits):
                     self.point_location_data[f][p][1] = linked_centroids[p][f][1]
                     self.point_location_data[f][p][2] = linked_centroids[p][f][2]
 
-
+    def update_annot(self): # update the scalar field and visualization auto updates
+        npspace = annot3D.get_npspace()
+        self.npspace_sf.mlab_source.trait_set(scalars=npspace)
+    
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False), resizable=True )
 
 class MayaviQWidget(QWidget): #mayavi raam
