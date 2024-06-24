@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt#, QSize
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPalette, QPixmap, QColor, QAction#, QResizeEvent # move QAction to QtWidgets when using Python 3.10.10
-from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget, QTabWidget#, QAction
+from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget, QTabWidget, QFrame#, QAction
 
 # from traits.etsconfig.api import ETSConfig
 # ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
@@ -598,13 +598,23 @@ class MainWindow(QMainWindow): #hele raam
         options_page_layout = QVBoxLayout()
         options_page.setLayout(options_page_layout)
 
-        functions_layout = QGridLayout()
-        adjustments_layout = QGridLayout()
-        transparency_bar_layout = QHBoxLayout()
-        size_bar_layout = QHBoxLayout()
+        annotation_layout = QVBoxLayout()
+        visualization_layout = QVBoxLayout()
 
+        def create_header(text, layout):
+            label = QLabel(text)
+            layout.addWidget(label)
 
-        # FUNCTIONS LAYOUT: grid for several functions and cell selection
+            line = QFrame();
+            line.setFrameShape(QFrame.HLine);
+            line.setFrameShadow(QFrame.Sunken);
+            layout.addWidget(line)
+
+        # ANNOTATION OPTIONS LAYOUT
+        create_header('Annotation options', annotation_layout)
+
+        annotation_buttons_layout = QGridLayout()
+
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point = new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index = int(new_point)
@@ -619,70 +629,89 @@ class MainWindow(QMainWindow): #hele raam
         selection_box = QComboBox()
         selection_box.addItems(point_list)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
-        functions_layout.addWidget(selection_box, 0, 0)
+        annotation_buttons_layout.addWidget(selection_box, 0, 0)
 
         self.continue_button = QPushButton('copy previous\nannotation')
         self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        functions_layout.addWidget(self.continue_button, 0, 1)
+        annotation_buttons_layout.addWidget(self.continue_button, 0, 1)
 
         self.delete_button = QPushButton('delete\nannotation') #'delete' is wat er op knop staat
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
-        functions_layout.addWidget(self.delete_button, 0, 2) #plaats knop op grid (self.knop, x op grid, y op grid)
+        annotation_buttons_layout.addWidget(self.delete_button, 0, 2) #plaats knop op grid (self.knop, x op grid, y op grid)
+
+        annotation_layout.addLayout(annotation_buttons_layout)
 
 
-        self.volume_button = QPushButton('show\nimage')
-        self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
-        functions_layout.addWidget(self.volume_button, 1, 0)
+        # Adjustments layout
+        adjustments_layout = QGridLayout()
 
-        self.trajectory_button = QPushButton("show\ntrajectory")
-        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
-        functions_layout.addWidget(self.trajectory_button, 1, 1)
+        adjustments_layout.setRowMinimumHeight(0, 10)
+        adjustments_layout.setColumnMinimumWidth(0, 45)
+        
+        x_label = QLabel('X')
+        x_label.setFixedWidth(25)
+        adjustments_layout.addWidget(x_label, 1, 1)
+        y_label = QLabel('Y')
+        y_label.setFixedWidth(25)
+        adjustments_layout.addWidget(y_label, 2, 1)
+        z_label = QLabel('Z')
+        z_label.setFixedWidth(25)
+        adjustments_layout.addWidget(z_label, 3, 1)
 
-        self.all_trajectories_button = QPushButton("show all\ntrajectories")
-        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
-        functions_layout.addWidget(self.all_trajectories_button, 1, 2)
-
-
-        # ADJUSTMENTS LAYOUT: grid for annotation adjustments
-        self.x_label = QLabel('X')
-        self.y_label = QLabel('Y')
-        self.z_label = QLabel('Z')
-
-        adjustments_layout.setRowMinimumHeight(0, 25)
-        adjustments_layout.setColumnMinimumWidth(0, 75)
-        adjustments_layout.addWidget(self.x_label, 1, 1)
-        adjustments_layout.addWidget(self.y_label, 2, 1)
-        adjustments_layout.addWidget(self.z_label, 3, 1)
-
-        def create_button(self, text, update=[0,0,0]): #function to create standard button
+        def create_adjust_button(self, text, update=[0,0,0]):
             self.button = QPushButton(text)
             self.button.setFixedSize(25, 25)
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
             return self.button
 
-        adjustments_layout.addWidget(create_button(self, '-5', [-5,0,0]), 1, 2) #create x-5 button
-        adjustments_layout.addWidget(create_button(self, '-1', [-1,0,0]), 1, 3) #create x-1 button
-        adjustments_layout.addWidget(create_button(self, '+1', [1,0,0]), 1, 4) #create x+1 button
-        adjustments_layout.addWidget(create_button(self, '+5', [5,0,0]), 1, 5) #create x+5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-5', [-5,0,0]), 1, 2) #create x-5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-1', [-1,0,0]), 1, 3) #create x-1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+1', [1,0,0]), 1, 4) #create x+1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+5', [5,0,0]), 1, 5) #create x+5 button
 
-        adjustments_layout.addWidget(create_button(self, '-5', [0,-5,0]), 2, 2) #create y-5 button
-        adjustments_layout.addWidget(create_button(self, '-1', [0,-1,0]), 2, 3) #create y-1 button
-        adjustments_layout.addWidget(create_button(self, '+1', [0,1,0]), 2, 4) #create y+1 button
-        adjustments_layout.addWidget(create_button(self, '+5', [0,5,0]), 2, 5) #create y+5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-5', [0,-5,0]), 2, 2) #create y-5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-1', [0,-1,0]), 2, 3) #create y-1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+1', [0,1,0]), 2, 4) #create y+1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+5', [0,5,0]), 2, 5) #create y+5 button
 
-        adjustments_layout.addWidget(create_button(self, '-5', [0,0,-5]), 3, 2) #create z-5 button
-        adjustments_layout.addWidget(create_button(self, '-1', [0,0,-1]), 3, 3) #create z-1 button
-        adjustments_layout.addWidget(create_button(self, '+1', [0,0,1]), 3, 4) #create z+1 button
-        adjustments_layout.addWidget(create_button(self, '+5', [0,0,5]), 3, 5) #create z+5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-5', [0,0,-5]), 3, 2) #create z-5 button
+        adjustments_layout.addWidget(create_adjust_button(self, '-1', [0,0,-1]), 3, 3) #create z-1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+1', [0,0,1]), 3, 4) #create z+1 button
+        adjustments_layout.addWidget(create_adjust_button(self, '+5', [0,0,5]), 3, 5) #create z+5 button
 
-        adjustments_layout.setColumnMinimumWidth(6, 75)
+        adjustments_layout.setColumnMinimumWidth(6, 45)
         adjustments_layout.setRowMinimumHeight(4, 25)
 
+        annotation_layout.addLayout(adjustments_layout, Qt.AlignCenter)
 
-        # TRANSPARENCY BAR
+
+        # VISUALIZATION OPTIONS LAYOUT
+        create_header('Visualization options', visualization_layout)
+
+        visualization_buttons_layout = QGridLayout()
+
+        self.volume_button = QPushButton('show\nimage')
+        self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
+        visualization_buttons_layout.addWidget(self.volume_button, 0, 0)
+
+        self.trajectory_button = QPushButton("show\ntrajectory")
+        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        visualization_buttons_layout.addWidget(self.trajectory_button, 0, 1)
+
+        self.all_trajectories_button = QPushButton("show all\ntrajectories")
+        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
+        visualization_buttons_layout.addWidget(self.all_trajectories_button, 0, 2)
+
+        visualization_layout.addLayout(visualization_buttons_layout)
+
+
+        # Sliders layout
+        sliders_layout = QGridLayout()
+
+        # transparency slider
         self.transparency_label = QLabel('transparency')
         self.transparency_label.setMinimumWidth(80)
-        transparency_bar_layout.addWidget(self.transparency_label)
+        sliders_layout.addWidget(self.transparency_label, 0, 0)
 
         self.transparency_slider = QSlider(Qt.Horizontal)
         self.transparency_slider.setValue(5)
@@ -692,13 +721,12 @@ class MainWindow(QMainWindow): #hele raam
         self.transparency_slider.setMinimumWidth(170)
         self.transparency_slider.sliderReleased.connect(self.change_transparancy)  #past pas aan bij loslaten, kan ook bij bewegen maar is lag
 
-        transparency_bar_layout.addWidget(self.transparency_slider)
+        sliders_layout.addWidget(self.transparency_slider, 0, 1)
 
-
-        # SIZE BAR
+        # sphere size slider
         self.sphere_size_label = QLabel('sphere size')
         self.sphere_size_label.setMinimumWidth(80)
-        size_bar_layout.addWidget(self.sphere_size_label)
+        sliders_layout.addWidget(self.sphere_size_label, 1, 0)
 
         self.sphere_size_slider = QSlider(Qt.Horizontal)
         self.sphere_size_slider.setValue(10)
@@ -708,15 +736,16 @@ class MainWindow(QMainWindow): #hele raam
         self.sphere_size_slider.setMinimumWidth(170)
         self.sphere_size_slider.sliderReleased.connect(self.change_sphere_size)
 
-        size_bar_layout.addWidget(self.sphere_size_slider)
+        sliders_layout.addWidget(self.sphere_size_slider, 1, 1)
+
+
+        visualization_layout.addLayout(sliders_layout)
 
 
         # Add layouts to options page
         options_page_layout.addStretch(0)
-        options_page_layout.addLayout(functions_layout)
-        options_page_layout.addLayout(adjustments_layout)
-        options_page_layout.addLayout(transparency_bar_layout)
-        options_page_layout.addLayout(size_bar_layout)
+        options_page_layout.addLayout(annotation_layout)
+        options_page_layout.addLayout(visualization_layout)
         options_page_layout.addStretch(10)
 
 
@@ -728,13 +757,13 @@ class MainWindow(QMainWindow): #hele raam
 
     # Add pages to tab wiget
         tab.addTab(options_page, 'Options')
-        tab.addTab(cell_page, 'Cell selection')
+        tab.addTab(cell_page, 'Cell Selection')
 
 
     # FRAME NAVIGATION LAYOUT
         navigation_layout = QGridLayout()
 
-        goto_button = QPushButton('goto')
+        goto_button = QPushButton('go to frame')
         goto_button.clicked.connect(self.goto_frame)
         navigation_layout.addWidget(goto_button, 0, 1)
 
