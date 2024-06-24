@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt#, QSize
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPalette, QPixmap, QColor, QAction#, QResizeEvent # move QAction to QtWidgets when using Python 3.10.10
-from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget#, QAction
+from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget, QTabWidget#, QAction
 
 # from traits.etsconfig.api import ETSConfig
 # ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
@@ -460,36 +460,6 @@ class MayaviQWidget(QWidget): #mayavi raam
         self.visualization.update_annot()
 
 class MainWindow(QMainWindow): #hele raam
-    """The main window of the app, contains buttons and Mayavi window.
-
-    ...
-
-    Attributes
-    ----------
-    c : dict
-        explanation
-    dims : tuple
-        explanation
-    frames : dict
-        explanation
-    plane_depth : dict
-        explanation
-    frame_annotations : dict
-        explanation
-    num_frames : int
-        explanation
-    npimages : int
-        explanation
-
-    Methods
-    -------
-    load_source_file(filename):
-        explanation
-    setup_bar_actions():
-        explanation
-    load_annot_dialog():
-        explanation
-    """
     c = {'xy': 0, 'xz': 0, 'yz': 0}
     
     # dims = (500, 500, 25) # w, h, d TODO: kijken of hier iets mee wordt gedaan
@@ -593,33 +563,22 @@ class MainWindow(QMainWindow): #hele raam
         """
         super().__init__()
         
-    # INIT ANNOT LOAD UP #maak dictionary van alle file namen en laad eerste
+    # INIT ANNOT LOAD UP
         self.load_tiff_dialog()
+        temp_dict = create_image_dict(directory)
+        self.load_source_file(directory + '/' + temp_dict[0])
 
-        temp_dict = create_image_dict(directory) #creates a dict so it can load the first file, there might be a beter way to load the first file since this dict is only used once
-        self.load_source_file(directory+'/'+temp_dict[0]) #load the first image in the dict
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
+        main_widget.setMaximumWidth(300)
+        self.setWindowTitle("ZebraVishualizer_annot3d")
+        self.setCentralWidget(main_widget)
 
-        # if len(sys.argv) == 2: #uit annot3D, lijkt overbodig
-        #     global annot3D
-        #     print("Set server URL to", sys.argv[1])
-        #     annot3D.set_server_url(sys.argv[1])  
+        tab = QTabWidget(self)
+        options_page = QWidget()
+        cell_page = QWidget()
 
-        w = QWidget()
-        
-        layout = QHBoxLayout()
-        w.setLayout(layout)
-
-    # CANVAS LAYOUT #maak grid om knoppen op te plaatsen
-        canvas = QGridLayout()
-        canvas.setAlignment(Qt.AlignLeft)
-        sub_canvas_adjustments = QGridLayout()
-        sub_canvas_functions = QGridLayout()
-        sub_canvas_transparancy_bar = QGridLayout()
-        sub_canvas_size_bar = QGridLayout()
-        sub_canvas_frames = QGridLayout()
-
-    # TOOLBAR, STATUSBAR, MENU #toolbar waar nu "file" op staat
-        self.setup_bar_actions()
 
     # MAYAVI RENDER VIEW
         self.rdock = QDockWidget("Render View", self) # render dock
@@ -633,14 +592,19 @@ class MainWindow(QMainWindow): #hele raam
         self.load_annot_dialog(True)
 
         self.animate()
-    
-
-    # GENERAL WINDOW PROPS
-        self.setWindowTitle("ZebraVishualizer_annot3d")
-        self.setCentralWidget(w)
 
 
-        # Sub canvas grid for several functions and cell selection
+    # OPTIONS PAGE
+        options_page_layout = QVBoxLayout()
+        options_page.setLayout(options_page_layout)
+
+        functions_layout = QGridLayout()
+        adjustments_layout = QGridLayout()
+        transparency_bar_layout = QHBoxLayout()
+        size_bar_layout = QHBoxLayout()
+
+
+        # FUNCTIONS LAYOUT: grid for several functions and cell selection
         def change_selected_point(new_point): #leest welke aangeklikt is
             new_point = new_point.split(" ")[1] #split the string and take the number
             self.mayavi_widget.visualization.current_point_index = int(new_point)
@@ -650,143 +614,152 @@ class MainWindow(QMainWindow): #hele raam
 
         point_list = []   #list for the selectable points in the combobox
         for i in range(amount_of_points): #TODO: verander als trajectory met meer punten wordt geladen
-            point_list.append("cell "+str(i))
+            point_list.append("cell " + str(i))
 
         selection_box = QComboBox()
         selection_box.addItems(point_list)    
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
-        selection_box.setMinimumSize(50,50)
-        sub_canvas_functions.addWidget(selection_box,0,0)
+        functions_layout.addWidget(selection_box, 0, 0)
 
         self.continue_button = QPushButton('copy previous\nannotation')
         self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        self.continue_button.setMinimumSize(50,50)
-        sub_canvas_functions.addWidget(self.continue_button,0,1)
+        functions_layout.addWidget(self.continue_button, 0, 1)
 
         self.delete_button = QPushButton('delete\nannotation') #'delete' is wat er op knop staat
         self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
-        self.delete_button.setMinimumSize(50,50) #definieer minimale grootte
-        sub_canvas_functions.addWidget(self.delete_button,0,2) #plaats knop op grid (self.knop, x op grid, y op grid)
+        functions_layout.addWidget(self.delete_button, 0, 2) #plaats knop op grid (self.knop, x op grid, y op grid)
 
 
         self.volume_button = QPushButton('show\nimage')
         self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
-        self.volume_button.setMinimumSize(50,50)
-        sub_canvas_functions.addWidget(self.volume_button,1,0)
+        functions_layout.addWidget(self.volume_button, 1, 0)
 
         self.trajectory_button = QPushButton("show\ntrajectory")
         self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
-        self.trajectory_button.setMinimumSize(50,50)
-        sub_canvas_functions.addWidget(self.trajectory_button,1,1)
+        functions_layout.addWidget(self.trajectory_button, 1, 1)
 
         self.all_trajectories_button = QPushButton("show all\ntrajectories")
         self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
-        self.all_trajectories_button.setMinimumSize(50,50)
-        sub_canvas_functions.addWidget(self.all_trajectories_button,1,2)
+        functions_layout.addWidget(self.all_trajectories_button, 1, 2)
 
 
-        # Sub canvas grid for annotation adjustments
+        # ADJUSTMENTS LAYOUT: grid for annotation adjustments
         self.x_label = QLabel('X')
-        # self.x_label.setMinimumSize(50,50)
         self.y_label = QLabel('Y')
-        # self.y_label.setMinimumSize(50,50)
         self.z_label = QLabel('Z')
-        # self.z_label.setMinimumSize(50,50)
 
-        sub_canvas_adjustments.setColumnMinimumWidth(0, 65)
-        sub_canvas_adjustments.addWidget(self.x_label,0,1)
-        sub_canvas_adjustments.addWidget(self.y_label,1,1)
-        sub_canvas_adjustments.addWidget(self.z_label,2,1)
+        adjustments_layout.setRowMinimumHeight(0, 25)
+        adjustments_layout.setColumnMinimumWidth(0, 75)
+        adjustments_layout.addWidget(self.x_label, 1, 1)
+        adjustments_layout.addWidget(self.y_label, 2, 1)
+        adjustments_layout.addWidget(self.z_label, 3, 1)
 
-        def create_button(self,text,update=[0,0,0]): #function to create standard button
+        def create_button(self, text, update=[0,0,0]): #function to create standard button
             self.button = QPushButton(text)
-            self.button.setFixedWidth(20)
+            self.button.setFixedSize(25, 25)
             self.button.clicked.connect(lambda: self.mayavi_widget.visualization.add_value_to_point(update))
-            # self.button.setMinimumSize(60,60)
             return self.button
 
-        sub_canvas_adjustments.addWidget(create_button(self,'-5',[-5,0,0]),0,2) #create x-5 button
-        sub_canvas_adjustments.addWidget(create_button(self,'-1',[-1,0,0]),0,3) #create x-1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+1',[1,0,0]),0,4) #create x+1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+5',[5,0,0]),0,5) #create x+5 button
+        adjustments_layout.addWidget(create_button(self, '-5', [-5,0,0]), 1, 2) #create x-5 button
+        adjustments_layout.addWidget(create_button(self, '-1', [-1,0,0]), 1, 3) #create x-1 button
+        adjustments_layout.addWidget(create_button(self, '+1', [1,0,0]), 1, 4) #create x+1 button
+        adjustments_layout.addWidget(create_button(self, '+5', [5,0,0]), 1, 5) #create x+5 button
 
-        sub_canvas_adjustments.addWidget(create_button(self,'-5',[0,-5,0]),1,2) #create y-5 button
-        sub_canvas_adjustments.addWidget(create_button(self,'-1',[0,-1,0]),1,3) #create y-1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+1',[0,1,0]),1,4) #create y+1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+5',[0,5,0]),1,5) #create y+5 button
+        adjustments_layout.addWidget(create_button(self, '-5', [0,-5,0]), 2, 2) #create y-5 button
+        adjustments_layout.addWidget(create_button(self, '-1', [0,-1,0]), 2, 3) #create y-1 button
+        adjustments_layout.addWidget(create_button(self, '+1', [0,1,0]), 2, 4) #create y+1 button
+        adjustments_layout.addWidget(create_button(self, '+5', [0,5,0]), 2, 5) #create y+5 button
 
-        sub_canvas_adjustments.addWidget(create_button(self,'-5',[0,0,-5]),2,2) #create z-5 button
-        sub_canvas_adjustments.addWidget(create_button(self,'-1',[0,0,-1]),2,3) #create z-1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+1',[0,0,1]),2,4) #create z+1 button
-        sub_canvas_adjustments.addWidget(create_button(self,'+5',[0,0,5]),2,5) #create z+5 button
+        adjustments_layout.addWidget(create_button(self, '-5', [0,0,-5]), 3, 2) #create z-5 button
+        adjustments_layout.addWidget(create_button(self, '-1', [0,0,-1]), 3, 3) #create z-1 button
+        adjustments_layout.addWidget(create_button(self, '+1', [0,0,1]), 3, 4) #create z+1 button
+        adjustments_layout.addWidget(create_button(self, '+5', [0,0,5]), 3, 5) #create z+5 button
+
+        adjustments_layout.setColumnMinimumWidth(6, 75)
+        adjustments_layout.setRowMinimumHeight(4, 25)
 
 
-        # Sub canvas for transparancy slider
+        # TRANSPARENCY BAR
         self.transparency_label = QLabel('transparency')
         self.transparency_label.setMinimumWidth(80)
-        sub_canvas_transparancy_bar.addWidget(self.transparency_label,0,0)
+        transparency_bar_layout.addWidget(self.transparency_label)
 
         self.transparency_slider = QSlider(Qt.Horizontal)
-        self.transparency_slider.setValue(10)
+        self.transparency_slider.setValue(5)
         self.transparency_slider.setMinimum(1.0)
         self.transparency_slider.setMaximum(20.0)
         self.transparency_slider.setSingleStep(0.1)
-        self.transparency_slider.setFixedWidth(170)
+        self.transparency_slider.setMinimumWidth(170)
         self.transparency_slider.sliderReleased.connect(self.change_transparancy)  #past pas aan bij loslaten, kan ook bij bewegen maar is lag
 
-        sub_canvas_transparancy_bar.addWidget(self.transparency_slider,0,1, Qt.AlignLeft)
+        transparency_bar_layout.addWidget(self.transparency_slider)
 
-        # Sub canvas for sphere size slider
+
+        # SIZE BAR
         self.sphere_size_label = QLabel('sphere size')
         self.sphere_size_label.setMinimumWidth(80)
-        sub_canvas_size_bar.addWidget(self.sphere_size_label,0,0)
+        size_bar_layout.addWidget(self.sphere_size_label)
 
         self.sphere_size_slider = QSlider(Qt.Horizontal)
         self.sphere_size_slider.setValue(10)
         self.sphere_size_slider.setMinimum(1.0)
         self.sphere_size_slider.setMaximum(20.0)
         self.sphere_size_slider.setSingleStep(0.1)
-        self.sphere_size_slider.setFixedWidth(170)
+        self.sphere_size_slider.setMinimumWidth(170)
         self.sphere_size_slider.sliderReleased.connect(self.change_sphere_size)
 
-        sub_canvas_size_bar.addWidget(self.sphere_size_slider,0,1, Qt.AlignLeft)
+        size_bar_layout.addWidget(self.sphere_size_slider)
 
 
-        # Sub canvas for frame navigation
+        # Add layouts to options page
+        options_page_layout.addStretch(0)
+        options_page_layout.addLayout(functions_layout)
+        options_page_layout.addLayout(adjustments_layout)
+        options_page_layout.addLayout(transparency_bar_layout)
+        options_page_layout.addLayout(size_bar_layout)
+        options_page_layout.addStretch(10)
+
+
+    # CELL SELECTION PAGE
+        cell_page_layout = QGridLayout()
+        cell_page.setLayout(cell_page_layout)
+        #TODO
+
+
+    # Add pages to tab wiget
+        tab.addTab(options_page, 'Options')
+        tab.addTab(cell_page, 'Cell selection')
+
+
+    # FRAME NAVIGATION LAYOUT
+        navigation_layout = QGridLayout()
+
         goto_button = QPushButton('goto')
         goto_button.clicked.connect(self.goto_frame)
-        # goto_button.setMinimumSize(50,50)
-        sub_canvas_frames.addWidget(goto_button,0,0)
+        navigation_layout.addWidget(goto_button, 0, 1)
 
         previous_button = QPushButton('<')
         previous_button.clicked.connect(self.change_volume_model_previous)
-        # previous_button.setMinimumSize(50,50)
-        sub_canvas_frames.addWidget(previous_button,0,1)
+        navigation_layout.addWidget(previous_button, 0, 2)
 
         next_button = QPushButton('>')
         next_button.clicked.connect(self.change_volume_model_next)
-        # next_button.setMinimumSize(50,50)
-        sub_canvas_frames.addWidget(next_button,0,2)
+        navigation_layout.addWidget(next_button, 0, 3)
 
-        self.frame_label = QLabel('frame 1/'+str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching
-        # self.frame_label.setMinimumSize(50,50)
-        sub_canvas_frames.addWidget(self.frame_label,1,0)
+        self.frame_label = QLabel('frame 1/' + str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching
+        navigation_layout.addWidget(self.frame_label, 1, 3, Qt.AlignRight | Qt.AlignTop)
 
-
-        # Add sub canvas grids to main canvas
-        canvas.addLayout(sub_canvas_functions,0,0,1,0,Qt.AlignLeft)
-        canvas.setRowMinimumHeight(1, 50)
-        canvas.addLayout(sub_canvas_adjustments,2,0,1,0,Qt.AlignLeft)
-        canvas.setRowMinimumHeight(3, 50)
-        canvas.addLayout(sub_canvas_transparancy_bar,4,0,1,0,Qt.AlignLeft)
-        canvas.addLayout(sub_canvas_size_bar,5,0,1,0,Qt.AlignLeft)
-        canvas.setRowMinimumHeight(6, 50)
-        canvas.addLayout(sub_canvas_frames,7,0,1,0,Qt.AlignLeft)
-
-        layout.addLayout(canvas) #voeg grid 'layout' toe aan window
+        
+    # Add widgets to main layout
+        main_layout.addWidget(tab)
+        main_layout.addLayout(navigation_layout)
 
 
-        #popup layout #voor export
+    # TOOLBAR, STATUSBAR, MENU
+        self.setup_bar_actions()
+
+
+    #popup layout #voor export
         self.popup=QDialog(self)
         self.popup.setWindowTitle("Export information")
 
@@ -805,7 +778,6 @@ class MainWindow(QMainWindow): #hele raam
         cancel_button = QPushButton('cancel')
         cancel_button.clicked.connect(self.popup.reject)
 
-
         self.popup_layout.addWidget(x_axis_label,0,0)
         self.popup_layout.addWidget(self.x_input,0,1)
         self.popup_layout.addWidget(y_axis_label,1,0)
@@ -819,11 +791,6 @@ class MainWindow(QMainWindow): #hele raam
 
     def setup_bar_actions(self): #beschrijf balk bovenaan met 'file'
         self.statusBar()
-        
-        exitAction = QAction(QIcon(get_filled_pixmap('graphics/delete.png')), 'Exit', self)
-        exitAction.setShortcut(QKeySequence.Quit) # Ctrl+Q
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.close)
 
         loadAnnotAction = QAction(QIcon(get_filled_pixmap('graphics/load.png')), 'Load trajectories', self)
         loadAnnotAction.setShortcut(QKeySequence.Open) # Ctrl+O
@@ -839,6 +806,11 @@ class MainWindow(QMainWindow): #hele raam
         exportAction.setShortcut('Ctrl+E')
         exportAction.setStatusTip('Export source and trajectories as dataset directory')
         exportAction.triggered.connect(self.export_dialog)
+
+        exitAction = QAction(QIcon(get_filled_pixmap('graphics/delete.png')), 'Exit', self)
+        exitAction.setShortcut(QKeySequence.Quit) # Ctrl+Q
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(self.close)
 
         #'goto' knop
         gotoAction = QAction('goto', self)
