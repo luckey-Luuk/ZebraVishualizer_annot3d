@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt#, QSize
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPalette, QPixmap, QColor, QAction#, QResizeEvent # move QAction to QtWidgets when using Python 3.10.10
-from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget, QTabWidget, QFrame#, QAction
+from PySide6.QtWidgets import QApplication, QComboBox, QDockWidget, QFileDialog, QDialog, QHBoxLayout, QInputDialog, QLabel, QMainWindow, QPushButton, QSlider, QSpinBox, QGridLayout, QVBoxLayout, QWidget, QTabWidget, QFrame, QButtonGroup, QScrollArea, QCheckBox#, QAction
 
 # from traits.etsconfig.api import ETSConfig
 # ETSConfig.toolkit = 'qt4' # fix traitsui.qt4.* modules having moved to traitsui.qt.*
@@ -36,7 +36,8 @@ current_frame = {'xy': 0, 'xz': 0, 'yz': 0}
 annot3D = -1
 w, h, d = 500, 500, 25
 
-amount_of_points = 20
+amount_of_points = 0
+colour_array = create_colour_array()
 # directory = 'data/data_annot3d/20190621++2' #folder containing tif files
 directory = 'data/data_ZebraVishualizer/original/3D tracking data to visualize/20190701--2_inter_29layers_mask_3a'
 
@@ -67,7 +68,9 @@ class Visualization(HasTraits):
         self.show_trajectory = False
         self.show_all_trajectories = False
 
-        self.colour_array = create_colour_array()
+        # self.colour_array = create_colour_array()
+        global colour_array
+        self.colour_array = colour_array
         
         self.point_location_data=[{} for f in range(self.amount_of_frames)] #information of point locations in every time step
         
@@ -481,7 +484,7 @@ class MainWindow(QMainWindow): #hele raam
         # else:
         #     sys.exit()
 
-    def load_annot_dialog(self, setup=False): #TODO: check if .pkl is compatible with .tif
+    def load_annot_dialog(self): #TODO: check if .pkl is compatible with .tif
         fname, _ = QFileDialog.getOpenFileName(self, 'Select file containing trajectories (optional)', '.', filter="(*.pkl *.xlsx)")
 
         if fname.endswith('.pkl'):
@@ -493,25 +496,17 @@ class MainWindow(QMainWindow): #hele raam
         else:
             return
 
-        if not setup:
-            window.mayavi_widget.visualization.goto_frame(self.mayavi_widget.visualization.current_frame_number)
+        for c in range(self.cell_list_layout.count()-1, amount_of_points):
+            self.add_cell(c)
+
+        # if not setup:
+        window.mayavi_widget.visualization.goto_frame(self.mayavi_widget.visualization.current_frame_number)
             # window.mayavi_widget.visualization.redraw_all_points()
             # if window.mayavi_widget.visualization.show_trajectory==True:
             #     window.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
         return
 
     def load_source_file(self, filename): #uit annot3D, nodig
-        """Text.
-
-        Parameters
-        ----------
-        filename : ???
-            explanation
-
-        Returns
-        -------
-        None
-        """
         # global COLORS, p, current_frame, annot3D
         global annot3D
 
@@ -564,37 +559,39 @@ class MainWindow(QMainWindow): #hele raam
         super().__init__()
         
     # INIT ANNOT LOAD UP
+        self.setWindowTitle("ZebraVishualizer_annot3d")
+        self.setWindowIcon(QIcon('graphics/logo.ico'))
+
         self.load_tiff_dialog()
         temp_dict = create_image_dict(directory)
         self.load_source_file(directory + '/' + temp_dict[0])
 
-        main_widget = QWidget()
-        main_layout = QVBoxLayout()
-        main_widget.setLayout(main_layout)
-        main_widget.setMaximumWidth(300)
-        self.setWindowTitle("ZebraVishualizer_annot3d")
-        self.setCentralWidget(main_widget)
-
-        tab = QTabWidget(self)
-        options_page = QWidget()
-        cell_page = QWidget()
-
 
     # MAYAVI RENDER VIEW
-        self.rdock = QDockWidget("Render View", self) # render dock
-        self.rdock.setFeatures(self.rdock.features() & ~QDockWidget.DockWidgetClosable) # unclosable
-        self.rdock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        container = QWidget(self.rdock)
-        self.mayavi_widget = MayaviQWidget(container)
-        self.rdock.setWidget(self.mayavi_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.rdock)
+        rdock = QDockWidget("Render View", self) # render dock
+        rdock.setFeatures(rdock.features() & ~QDockWidget.DockWidgetClosable) # remove closable from features
+        rdock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
 
-        self.load_annot_dialog(True)
+        container = QWidget(rdock)
+        self.mayavi_widget = MayaviQWidget(container)
+        rdock.setWidget(self.mayavi_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, rdock)
+
+        # self.load_annot_dialog(True)
 
         self.animate()
 
 
+    # MAIN WINDOW
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_widget.setLayout(main_layout)
+        main_widget.setMaximumWidth(300)
+        self.setCentralWidget(main_widget)
+
+
     # OPTIONS PAGE
+        options_page = QWidget()
         options_page_layout = QVBoxLayout()
         options_page.setLayout(options_page_layout)
 
@@ -611,7 +608,7 @@ class MainWindow(QMainWindow): #hele raam
             layout.addWidget(line)
 
         # ANNOTATION OPTIONS LAYOUT
-        create_header('Annotation options', annotation_layout)
+        create_header('Annotation options for selected cell', annotation_layout)
 
         annotation_buttons_layout = QGridLayout()
 
@@ -631,13 +628,13 @@ class MainWindow(QMainWindow): #hele raam
         selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
         annotation_buttons_layout.addWidget(selection_box, 0, 0)
 
-        self.continue_button = QPushButton('copy previous\nannotation')
-        self.continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
-        annotation_buttons_layout.addWidget(self.continue_button, 0, 1)
+        continue_button = QPushButton('copy last\nframe')
+        continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
+        annotation_buttons_layout.addWidget(continue_button, 0, 1)
 
-        self.delete_button = QPushButton('delete\nannotation') #'delete' is wat er op knop staat
-        self.delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
-        annotation_buttons_layout.addWidget(self.delete_button, 0, 2) #plaats knop op grid (self.knop, x op grid, y op grid)
+        delete_button = QPushButton('delete\nannotation') #'delete' is wat er op knop staat
+        delete_button.clicked.connect(lambda: self.mayavi_widget.visualization.delete_point()) #connectie tussen knop en functie
+        annotation_buttons_layout.addWidget(delete_button, 0, 2) #plaats knop op grid (self.knop, x op grid, y op grid)
 
         annotation_layout.addLayout(annotation_buttons_layout)
 
@@ -690,17 +687,17 @@ class MainWindow(QMainWindow): #hele raam
 
         visualization_buttons_layout = QGridLayout()
 
-        self.volume_button = QPushButton('show\nimage')
-        self.volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
-        visualization_buttons_layout.addWidget(self.volume_button, 0, 0)
+        volume_button = QPushButton('show\nimage')
+        volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
+        visualization_buttons_layout.addWidget(volume_button, 0, 0)
 
-        self.trajectory_button = QPushButton("show\ntrajectory")
-        self.trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
-        visualization_buttons_layout.addWidget(self.trajectory_button, 0, 1)
+        trajectory_button = QPushButton("show\ntrajectory")
+        trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        visualization_buttons_layout.addWidget(trajectory_button, 0, 1)
 
-        self.all_trajectories_button = QPushButton("show all\ntrajectories")
-        self.all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
-        visualization_buttons_layout.addWidget(self.all_trajectories_button, 0, 2)
+        all_trajectories_button = QPushButton("show all\ntrajectories")
+        all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
+        visualization_buttons_layout.addWidget(all_trajectories_button, 0, 2)
 
         visualization_layout.addLayout(visualization_buttons_layout)
 
@@ -709,9 +706,9 @@ class MainWindow(QMainWindow): #hele raam
         sliders_layout = QGridLayout()
 
         # transparency slider
-        self.transparency_label = QLabel('transparency')
-        self.transparency_label.setMinimumWidth(80)
-        sliders_layout.addWidget(self.transparency_label, 0, 0)
+        transparency_label = QLabel('transparency')
+        transparency_label.setMinimumWidth(80)
+        sliders_layout.addWidget(transparency_label, 0, 0)
 
         self.transparency_slider = QSlider(Qt.Horizontal)
         self.transparency_slider.setValue(5)
@@ -724,9 +721,9 @@ class MainWindow(QMainWindow): #hele raam
         sliders_layout.addWidget(self.transparency_slider, 0, 1)
 
         # sphere size slider
-        self.sphere_size_label = QLabel('sphere size')
-        self.sphere_size_label.setMinimumWidth(80)
-        sliders_layout.addWidget(self.sphere_size_label, 1, 0)
+        sphere_size_label = QLabel('sphere size')
+        sphere_size_label.setMinimumWidth(80)
+        sliders_layout.addWidget(sphere_size_label, 1, 0)
 
         self.sphere_size_slider = QSlider(Qt.Horizontal)
         self.sphere_size_slider.setValue(10)
@@ -746,16 +743,39 @@ class MainWindow(QMainWindow): #hele raam
         options_page_layout.addStretch(0)
         options_page_layout.addLayout(annotation_layout)
         options_page_layout.addLayout(visualization_layout)
-        options_page_layout.addStretch(10)
+        options_page_layout.addStretch(1)
 
 
     # CELL SELECTION PAGE
-        cell_page_layout = QGridLayout()
+        cell_page = QWidget()
+        cell_page_layout = QVBoxLayout()
         cell_page.setLayout(cell_page_layout)
-        #TODO
+
+        self.selection_box_group = QButtonGroup()
+        cell_list = QWidget()
+        self.cell_list_layout = QVBoxLayout()
+        cell_list.setLayout(self.cell_list_layout)
+
+        scroll = QScrollArea()
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(cell_list)
+        
+        def add_new_cell():
+            global amount_of_points
+            self.add_cell(amount_of_points)
+            amount_of_points += 1
+        add_cell_button = QPushButton('+   add cell')
+        add_cell_button.clicked.connect(add_new_cell)
+
+        # Add layouts to cell page
+        cell_page_layout.addWidget(scroll)
+        self.cell_list_layout.addStretch(1)
+        cell_page_layout.addWidget(add_cell_button, Qt.AlignBottom)
 
 
     # Add pages to tab wiget
+        tab = QTabWidget(self)
         tab.addTab(options_page, 'Options')
         tab.addTab(cell_page, 'Cell Selection')
 
@@ -792,7 +812,7 @@ class MainWindow(QMainWindow): #hele raam
         self.popup=QDialog(self)
         self.popup.setWindowTitle("Export information")
 
-        self.popup_layout = QGridLayout()
+        popup_layout = QGridLayout()
         x_axis_label = QLabel('X axis size')
         y_axis_label = QLabel('Y axis size')
         z_axis_label = QLabel('Z axis size')
@@ -807,16 +827,16 @@ class MainWindow(QMainWindow): #hele raam
         cancel_button = QPushButton('cancel')
         cancel_button.clicked.connect(self.popup.reject)
 
-        self.popup_layout.addWidget(x_axis_label,0,0)
-        self.popup_layout.addWidget(self.x_input,0,1)
-        self.popup_layout.addWidget(y_axis_label,1,0)
-        self.popup_layout.addWidget(self.y_input,1,1)
-        self.popup_layout.addWidget(z_axis_label,2,0)
-        self.popup_layout.addWidget(self.z_input,2,1)
-        self.popup_layout.addWidget(accept_button,3,0)
-        self.popup_layout.addWidget(cancel_button,3,1)
+        popup_layout.addWidget(x_axis_label,0,0)
+        popup_layout.addWidget(self.x_input,0,1)
+        popup_layout.addWidget(y_axis_label,1,0)
+        popup_layout.addWidget(self.y_input,1,1)
+        popup_layout.addWidget(z_axis_label,2,0)
+        popup_layout.addWidget(self.z_input,2,1)
+        popup_layout.addWidget(accept_button,3,0)
+        popup_layout.addWidget(cancel_button,3,1)
 
-        self.popup.setLayout(self.popup_layout)
+        self.popup.setLayout(popup_layout)
 
     def setup_bar_actions(self): #beschrijf balk bovenaan met 'file'
         self.statusBar()
@@ -947,6 +967,45 @@ class MainWindow(QMainWindow): #hele raam
         new_size = self.sphere_size_slider.value()
         window.mayavi_widget.visualization.sphere_size = new_size
         window.mayavi_widget.visualization.redraw_all_points()
+
+    def add_cell(self, cell):
+        cell_options = QWidget()
+        cell_options_layout = QHBoxLayout()
+        cell_options.setLayout(cell_options_layout)
+
+        # global amount_of_points
+        # cell = amount_of_points
+        
+        # global colour_array
+        # colour_indicator = QLabel(self)
+        # colour_indicator.setFixedSize(30, 30)
+        # colour = colour_array[cell%len(colour_array)]
+        # Qcolour = QColor(colour[0]*255, colour[1]*255, colour[2]*255)
+        # colour_indicator.setStyleSheet(f"background-color: {Qcolour}; border-radius: 15px;")
+
+        cell_label = QLabel('CELL ' + str(cell))
+
+        def change_selected_point(new_point): #leest welke aangeklikt is
+            # new_point = new_point.split(" ")[1] #split the string and take the number
+            # self.mayavi_widget.visualization.current_point_index = int(new_point)
+            self.mayavi_widget.visualization.current_point_index = new_point
+            if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
+                self.mayavi_widget.visualization.remove_all_trajectories()
+                self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
+
+        selection_box = QCheckBox('edit trajectory')
+        selection_box.toggled.connect(lambda: change_selected_point(cell))
+        self.selection_box_group.addButton(selection_box)
+
+        # amount_of_points += 1
+
+        # cell_options_layout.addWidget(colour_indicator)
+        cell_options_layout.addWidget(cell_label)
+        cell_options_layout.addWidget(selection_box)
+
+        cell_options_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.cell_list_layout.insertWidget(self.cell_list_layout.count()-1, cell_options)
 
 
 if __name__ == "__main__":
