@@ -199,7 +199,6 @@ class Visualization(HasTraits):
         for p in range(amount_of_points-1):
             self.remove_trajectory(self.amount_of_frames-1, p)
         
-
     def toggle_trajectory(self): #changes showing and not showing results #toggle voor trajectory (knop)
         if self.show_trajectory==False:
             self.show_trajectory = True
@@ -612,21 +611,21 @@ class MainWindow(QMainWindow): #hele raam
 
         annotation_buttons_layout = QGridLayout()
 
-        def change_selected_point(new_point): #leest welke aangeklikt is
-            new_point = new_point.split(" ")[1] #split the string and take the number
-            self.mayavi_widget.visualization.current_point_index = int(new_point)
-            if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
-                self.mayavi_widget.visualization.remove_all_trajectories()
-                self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
+        # def change_selected_point(new_point): #leest welke aangeklikt is
+        #     new_point = new_point.split(" ")[1] #split the string and take the number
+        #     self.mayavi_widget.visualization.current_point_index = int(new_point)
+        #     if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
+        #         self.mayavi_widget.visualization.remove_all_trajectories()
+        #         self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
 
-        point_list = []   #list for the selectable points in the combobox
-        for i in range(amount_of_points): #TODO: verander als trajectory met meer punten wordt geladen
-            point_list.append("cell " + str(i))
+        # point_list = []   #list for the selectable points in the combobox
+        # for i in range(amount_of_points): #TODO: verander als trajectory met meer punten wordt geladen
+        #     point_list.append("cell " + str(i))
 
-        selection_box = QComboBox()
-        selection_box.addItems(point_list)    
-        selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
-        annotation_buttons_layout.addWidget(selection_box, 0, 0)
+        # selection_box = QComboBox()
+        # selection_box.addItems(point_list)    
+        # selection_box.currentIndexChanged.connect(lambda: change_selected_point(selection_box.currentText()))
+        # annotation_buttons_layout.addWidget(selection_box, 0, 0)
 
         continue_button = QPushButton('copy last\nframe')
         continue_button.clicked.connect(lambda: self.mayavi_widget.visualization.draw_previous_point())
@@ -976,12 +975,12 @@ class MainWindow(QMainWindow): #hele raam
         # global amount_of_points
         # cell = amount_of_points
         
-        # global colour_array
-        # colour_indicator = QLabel(self)
-        # colour_indicator.setFixedSize(30, 30)
-        # colour = colour_array[cell%len(colour_array)]
-        # Qcolour = QColor(colour[0]*255, colour[1]*255, colour[2]*255)
-        # colour_indicator.setStyleSheet(f"background-color: {Qcolour}; border-radius: 15px;")
+        global colour_array
+        colour_indicator = QLabel(self)
+        colour_indicator.setFixedSize(20, 20)
+        colour = colour_array[cell%len(colour_array)]
+        colour = str((colour[0]*255, colour[1]*255, colour[2]*255))
+        colour_indicator.setStyleSheet(f"background-color: rgb{colour}; border-radius: 10px;")
 
         cell_label = QLabel('CELL ' + str(cell))
 
@@ -992,16 +991,18 @@ class MainWindow(QMainWindow): #hele raam
             if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
                 self.mayavi_widget.visualization.remove_all_trajectories()
                 self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
+        edit_box = QCheckBox('edit')
+        edit_box.toggled.connect(lambda: change_selected_point(cell))
+        self.selection_box_group.addButton(edit_box)
 
-        selection_box = QCheckBox('edit trajectory')
-        selection_box.toggled.connect(lambda: change_selected_point(cell))
-        self.selection_box_group.addButton(selection_box)
+        show_box = QCheckBox('show')
+        show_box.toggled.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
 
         # amount_of_points += 1
 
-        # cell_options_layout.addWidget(colour_indicator)
+        cell_options_layout.addWidget(colour_indicator)
         cell_options_layout.addWidget(cell_label)
-        cell_options_layout.addWidget(selection_box)
+        cell_options_layout.addWidget(edit_box)
 
         cell_options_layout.setContentsMargins(0, 0, 0, 0)
 
