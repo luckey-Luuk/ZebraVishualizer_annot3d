@@ -65,7 +65,8 @@ class Visualization(HasTraits):
         self.transparancy = 1.0
 
         self.show_volume = True
-        self.show_trajectory = False
+        # self.show_trajectory = False
+        self.show_trajectory = {}
         self.show_all_trajectories = False
 
         # self.colour_array = create_colour_array()
@@ -182,30 +183,32 @@ class Visualization(HasTraits):
         for f in range(frame+1):
             self.draw_trajectory_step(f, point_index)
 
-    def remove_trajectory_step(self, f, p):
-        if p in self.mayavi_trajectory_dots[f]:
-            self.mayavi_trajectory_dots[f][p].remove()
-            del self.mayavi_trajectory_dots[f][p]
+    def remove_trajectory_step(self, frame, point_index):
+        if point_index in self.mayavi_trajectory_dots[frame]:
+            self.mayavi_trajectory_dots[frame][point_index].remove()
+            del self.mayavi_trajectory_dots[frame][point_index]
         
-        if p in self.mayavi_trajectory_lines[f]:
-            self.mayavi_trajectory_lines[f][p].remove()
-            del self.mayavi_trajectory_lines[f][p]
+        if point_index in self.mayavi_trajectory_lines[frame]:
+            self.mayavi_trajectory_lines[frame][point_index].remove()
+            del self.mayavi_trajectory_lines[frame][point_index]
     
-    def remove_trajectory(self, frame, point_index):
-        for f in range(frame+1):
-            self.remove_trajectory_step(f, point_index)
+    def remove_trajectory(self, point_index):
+        for frame in range(self.amount_of_frames):
+            self.remove_trajectory_step(frame, point_index)
 
     def remove_all_trajectories(self): #stop met trajectory visualiseren #TODO: verwijder 1 stap
-        for p in range(amount_of_points-1):
-            self.remove_trajectory(self.amount_of_frames-1, p)
+        for p in range(amount_of_points):
+            self.remove_trajectory(p)
         
-    def toggle_trajectory(self): #changes showing and not showing results #toggle voor trajectory (knop)
-        if self.show_trajectory==False:
-            self.show_trajectory = True
-            self.draw_trajectory(self.current_frame_number, self.current_point_index)
+    def toggle_trajectory(self, point_index): #changes showing and not showing results #toggle voor trajectory (knop)
+        if self.show_trajectory[point_index]==False:
+            self.show_trajectory[point_index] = True
+            if point_index in self.point_location_data[self.current_frame_number]:
+                self.draw_trajectory(self.current_frame_number, point_index)
         else:
-            self.remove_all_trajectories()
-            self.show_trajectory = False
+            # self.remove_all_trajectories()
+            self.remove_trajectory(point_index)
+            self.show_trajectory[point_index] = False
 
     def toggle_all_trajectories(self):
         if self.show_all_trajectories==False:
@@ -252,19 +255,24 @@ class Visualization(HasTraits):
             self.current_frame_number = 0 #loop around
 
             self.remove_all_trajectories()
-            if self.show_all_trajectories==True:
-                for p in range(amount_of_points):
-                    if p in self.point_location_data[self.current_frame_number]:
-                        self.draw_trajectory(self.current_frame_number, p)
-            elif self.show_trajectory==True:
-                if self.current_point_index in self.point_location_data[self.current_frame_number]:
-                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+            # for p in range(amount_of_points):
+            #     if self.show_trajectory[p]==True:
+            #         if p in self.point_location_data[self.current_frame_number]:
+            #             self.draw_trajectory(self.current_frame_number, p)
+
+            # if self.show_all_trajectories==True:
+            #     for p in range(amount_of_points):
+            #         if p in self.point_location_data[self.current_frame_number]:
+            #             self.draw_trajectory(self.current_frame_number, p)
+            # elif self.show_trajectory==True:
+            #     if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            #         self.draw_trajectory(self.current_frame_number, self.current_point_index)
 
         else:
             self.current_frame_number += 1
 
-            if self.show_all_trajectories==True:
-                for p in range(amount_of_points):
+            for p in range(amount_of_points):
+                if self.show_trajectory[p]==True:
                     if p in self.point_location_data[self.current_frame_number]:
                         if p in self.point_location_data[self.current_frame_number-1]:
                             self.draw_trajectory_step(self.current_frame_number, p)
@@ -273,15 +281,26 @@ class Visualization(HasTraits):
                     else:
                         # for f in range(self.current_frame_number+1,self.amount_of_frames): #TODO: alleen trajectory niet laten zien als die niet meer komt
                         #     if p in self.point_location_data[f]:
-                        self.remove_trajectory(self.current_frame_number, p)
-            elif self.show_trajectory==True:
-                if self.current_point_index in self.point_location_data[self.current_frame_number]:
-                    if self.current_point_index in self.point_location_data[self.current_frame_number-1]:
-                        self.draw_trajectory_step(self.current_frame_number, self.current_point_index)
-                    else:
-                        self.draw_trajectory(self.current_frame_number, self.current_point_index)
-                else:
-                    self.remove_trajectory(self.current_frame_number, self.current_point_index)
+                        self.remove_trajectory(p)
+            # if self.show_all_trajectories==True:
+            #     for p in range(amount_of_points):
+            #         if p in self.point_location_data[self.current_frame_number]:
+            #             if p in self.point_location_data[self.current_frame_number-1]:
+            #                 self.draw_trajectory_step(self.current_frame_number, p)
+            #             else:
+            #                 self.draw_trajectory(self.current_frame_number, p)
+            #         else:
+            #             # for f in range(self.current_frame_number+1,self.amount_of_frames): #TODO: alleen trajectory niet laten zien als die niet meer komt
+            #             #     if p in self.point_location_data[f]:
+            #             self.remove_trajectory(self.current_frame_number, p)
+            # elif self.show_trajectory==True:
+            #     if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            #         if self.current_point_index in self.point_location_data[self.current_frame_number-1]:
+            #             self.draw_trajectory_step(self.current_frame_number, self.current_point_index)
+            #         else:
+            #             self.draw_trajectory(self.current_frame_number, self.current_point_index)
+            #     else:
+            #         self.remove_trajectory(self.current_frame_number, self.current_point_index)
 
         if self.show_volume==True:
             self.update_volume()
@@ -294,34 +313,47 @@ class Visualization(HasTraits):
             self.current_frame_number = self.amount_of_frames-1 #loop around
 
             self.remove_all_trajectories()
-            if self.show_all_trajectories==True:
-                for p in range(amount_of_points-1):
+            for p in range(amount_of_points):
+                if self.show_trajectory[p]==True:
                     if p in self.point_location_data[self.current_frame_number]:
                         self.draw_trajectory(self.current_frame_number, p)
-            elif self.show_trajectory==True:
-                if self.current_point_index in self.point_location_data[self.current_frame_number]:
-                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+            # if self.show_all_trajectories==True:
+            #     for p in range(amount_of_points-1):
+            #         if p in self.point_location_data[self.current_frame_number]:
+            #             self.draw_trajectory(self.current_frame_number, p)
+            # elif self.show_trajectory==True:
+            #     if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            #         self.draw_trajectory(self.current_frame_number, self.current_point_index)
 
         else:
             self.current_frame_number -= 1
 
-            if self.show_all_trajectories==True:
-                for p in range(amount_of_points-1):
+            for p in range(amount_of_points):
+                if self.show_trajectory[p]==True:
                     if p in self.point_location_data[self.current_frame_number+1]:
                         if p in self.point_location_data[self.current_frame_number]:
                             self.remove_trajectory_step(self.current_frame_number+1, p)
                         else:
-                            self.remove_trajectory(self.current_frame_number+1, p)
+                            self.remove_trajectory(p)
                     elif p in self.point_location_data[self.current_frame_number]:
                         self.draw_trajectory(self.current_frame_number, p)
-            elif self.show_trajectory==True:
-                if self.current_point_index in self.point_location_data[self.current_frame_number+1]:
-                    if self.current_point_index in self.point_location_data[self.current_frame_number]:
-                        self.remove_trajectory_step(self.current_frame_number+1, self.current_point_index)
-                    else:
-                        self.remove_trajectory(self.current_frame_number+1, self.current_point_index)
-                elif self.current_point_index in self.point_location_data[self.current_frame_number]:
-                    self.draw_trajectory(self.current_frame_number, self.current_point_index)
+            # if self.show_all_trajectories==True:
+            #     for p in range(amount_of_points-1):
+            #         if p in self.point_location_data[self.current_frame_number+1]:
+            #             if p in self.point_location_data[self.current_frame_number]:
+            #                 self.remove_trajectory_step(self.current_frame_number+1, p)
+            #             else:
+            #                 self.remove_trajectory(self.current_frame_number+1, p)
+            #         elif p in self.point_location_data[self.current_frame_number]:
+            #             self.draw_trajectory(self.current_frame_number, p)
+            # elif self.show_trajectory==True:
+            #     if self.current_point_index in self.point_location_data[self.current_frame_number+1]:
+            #         if self.current_point_index in self.point_location_data[self.current_frame_number]:
+            #             self.remove_trajectory_step(self.current_frame_number+1, self.current_point_index)
+            #         else:
+            #             self.remove_trajectory(self.current_frame_number+1, self.current_point_index)
+            #     elif self.current_point_index in self.point_location_data[self.current_frame_number]:
+            #         self.draw_trajectory(self.current_frame_number, self.current_point_index)
 
         if self.show_volume==True:
             self.update_volume()
@@ -342,13 +374,17 @@ class Visualization(HasTraits):
         self.redraw_all_points()
         
         self.remove_all_trajectories()
-        if self.show_all_trajectories==True:
-            for p in range(amount_of_points-1):
+        for p in range(amount_of_points):
+            if self.show_trajectory[p]==True:
                 if p in self.point_location_data[self.current_frame_number]:
                     self.draw_trajectory(self.current_frame_number, p)
-        elif self.show_trajectory==True:
-            if self.current_point_index in self.point_location_data[self.current_frame_number]:
-                self.draw_trajectory(self.current_frame_number, self.current_point_index)
+        # if self.show_all_trajectories==True:
+        #     for p in range(amount_of_points-1):
+        #         if p in self.point_location_data[self.current_frame_number]:
+        #             self.draw_trajectory(self.current_frame_number, p)
+        # elif self.show_trajectory==True:
+        #     if self.current_point_index in self.point_location_data[self.current_frame_number]:
+        #         self.draw_trajectory(self.current_frame_number, self.current_point_index)
         #mlab.orientation_axes()
 
     def picker_callback(self,picker): #kijkt waar je klikt en tekent punt
@@ -690,13 +726,13 @@ class MainWindow(QMainWindow): #hele raam
         volume_button.clicked.connect(self.mayavi_widget.visualization.toggle_volume)
         visualization_buttons_layout.addWidget(volume_button, 0, 0)
 
-        trajectory_button = QPushButton("show\ntrajectory")
-        trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
-        visualization_buttons_layout.addWidget(trajectory_button, 0, 1)
+        # trajectory_button = QPushButton("show\ntrajectory")
+        # trajectory_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        # visualization_buttons_layout.addWidget(trajectory_button, 0, 1)
 
-        all_trajectories_button = QPushButton("show all\ntrajectories")
-        all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
-        visualization_buttons_layout.addWidget(all_trajectories_button, 0, 2)
+        # all_trajectories_button = QPushButton("show all\ntrajectories")
+        # all_trajectories_button.clicked.connect(lambda: self.mayavi_widget.visualization.toggle_all_trajectories())
+        # visualization_buttons_layout.addWidget(all_trajectories_button, 0, 2)
 
         visualization_layout.addLayout(visualization_buttons_layout)
 
@@ -750,7 +786,8 @@ class MainWindow(QMainWindow): #hele raam
         cell_page_layout = QVBoxLayout()
         cell_page.setLayout(cell_page_layout)
 
-        self.selection_box_group = QButtonGroup()
+        self.edit_box_group = QButtonGroup()
+        # self.show_box_group = QButtonGroup()
         cell_list = QWidget()
         self.cell_list_layout = QVBoxLayout()
         cell_list.setLayout(self.cell_list_layout)
@@ -990,15 +1027,17 @@ class MainWindow(QMainWindow): #hele raam
             # new_point = new_point.split(" ")[1] #split the string and take the number
             # self.mayavi_widget.visualization.current_point_index = int(new_point)
             self.mayavi_widget.visualization.current_point_index = new_point
-            if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
-                self.mayavi_widget.visualization.remove_all_trajectories()
-                self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
+            # if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
+            #     self.mayavi_widget.visualization.remove_all_trajectories()
+            #     self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
         self.edit_box = QCheckBox('edit')
         self.edit_box.toggled.connect(lambda: change_selected_point(cell))
-        self.selection_box_group.addButton(self.edit_box)
+        self.edit_box_group.addButton(self.edit_box)
 
-        show_box = QCheckBox('show')
-        # show_box.toggled.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        show_box = QCheckBox('show trajectory')
+        show_box.toggled.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory(cell))
+        self.mayavi_widget.visualization.show_trajectory[cell] = False
+        # self.show_box_group.addButton(show_box)
 
         # amount_of_points += 1
 
