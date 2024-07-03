@@ -56,7 +56,6 @@ class Visualization(HasTraits):
     @on_trait_change('scene.activated')
 
     def update_plot(self): #initializatie
-        global directory
         self.image_dictionary = create_image_dict(directory)
         self.amount_of_frames = len(self.image_dictionary)
         self.current_frame_number = 0
@@ -69,8 +68,7 @@ class Visualization(HasTraits):
         self.show_all_trajectories = False
 
         # self.colour_array = create_colour_array()
-        global colour_array
-        self.colour_array = colour_array
+        # self.colour_array = colour_array
         
         self.point_location_data=[{} for f in range(self.amount_of_frames)] #information of point locations in every time step
         
@@ -111,7 +109,7 @@ class Visualization(HasTraits):
         # draw all points
         for p in range(amount_of_points):
             if p in self.point_location_data[self.current_frame_number]:
-                self.mayavi_dots[p] = mlab.points3d(self.point_location_data[self.current_frame_number][p][0],self.point_location_data[self.current_frame_number][p][1],self.point_location_data[self.current_frame_number][p][2],color = self.colour_array[p%len(self.colour_array)],scale_factor=self.sphere_size)
+                self.mayavi_dots[p] = mlab.points3d(self.point_location_data[self.current_frame_number][p][0],self.point_location_data[self.current_frame_number][p][1],self.point_location_data[self.current_frame_number][p][2],color = colour_array[p%len(colour_array)],scale_factor=self.sphere_size)
 
     def load_xlsx(self,file_name="test_file.xlsx"): #knop load annotations TODO: change self.amount_of_points to max value in dot column
         book = load_workbook(filename=file_name)
@@ -220,7 +218,7 @@ class Visualization(HasTraits):
             self.mayavi_dots[self.current_point_index].remove()
             del self.mayavi_dots[self.current_point_index]
             
-        self.mayavi_dots[self.current_point_index] = mlab.points3d(new_x,new_y,new_z,color=self.colour_array[self.current_point_index%len(self.colour_array)],scale_factor=self.sphere_size)
+        self.mayavi_dots[self.current_point_index] = mlab.points3d(new_x,new_y,new_z,color=colour_array[self.current_point_index%len(colour_array)],scale_factor=self.sphere_size)
 
     def draw_previous_annotation(self): #places the point in the same location as it was in the previous image number
         if self.current_frame_number!=0 and self.current_point_index in self.point_location_data[self.current_frame_number-1]:
@@ -244,13 +242,13 @@ class Visualization(HasTraits):
             x_coordinate = self.point_location_data[frame][point_index][0]
             y_coordinate = self.point_location_data[frame][point_index][1]
             z_coordinate = self.point_location_data[frame][point_index][2]
-            self.mayavi_trajectory_dots[frame][point_index] = mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=self.colour_array[point_index%len(self.colour_array)],scale_factor=3)
+            self.mayavi_trajectory_dots[frame][point_index] = mlab.points3d(x_coordinate,y_coordinate,z_coordinate,color=colour_array[point_index%len(colour_array)],scale_factor=3)
 
             if point_index in self.point_location_data[frame-1]: #check if previous point is not None #teken buis ertussen als er twee punten achter elkaar zijn
                 x_coordinates = [self.point_location_data[frame-1][point_index][0],x_coordinate]
                 y_coordinates = [self.point_location_data[frame-1][point_index][1],y_coordinate]
                 z_coordinates = [self.point_location_data[frame-1][point_index][2],z_coordinate]
-                self.mayavi_trajectory_lines[frame][point_index] = mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=self.colour_array[point_index%len(self.colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
+                self.mayavi_trajectory_lines[frame][point_index] = mlab.plot3d(x_coordinates,y_coordinates,z_coordinates,color=colour_array[point_index%len(colour_array)],tube_radius=1) # gebruik color=(0,0.9,0) voor groen
     
     def draw_trajectory(self, frame, point_index):
         for f in range(frame+1):
@@ -1015,7 +1013,6 @@ class MainWindow(QMainWindow): #hele raam
         # global amount_of_points
         # cell = amount_of_points
         
-        global colour_array
         colour_indicator = QLabel(self)
         colour_indicator.setFixedSize(10, 10)
         colour = colour_array[cell%len(colour_array)]
