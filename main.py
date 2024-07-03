@@ -764,6 +764,8 @@ class MainWindow(QMainWindow): #hele raam
             global amount_of_points
             self.add_cell(amount_of_points)
             amount_of_points += 1
+        add_new_cell()
+        self.edit_box.setChecked(True)
         add_cell_button = QPushButton('+   add cell')
         add_cell_button.clicked.connect(add_new_cell)
 
@@ -977,10 +979,10 @@ class MainWindow(QMainWindow): #hele raam
         
         global colour_array
         colour_indicator = QLabel(self)
-        colour_indicator.setFixedSize(20, 20)
+        colour_indicator.setFixedSize(10, 10)
         colour = colour_array[cell%len(colour_array)]
         colour = str((colour[0]*255, colour[1]*255, colour[2]*255))
-        colour_indicator.setStyleSheet(f"background-color: rgb{colour}; border-radius: 10px;")
+        colour_indicator.setStyleSheet(f"background-color: rgb{colour}; border-radius: 5px;")
 
         cell_label = QLabel('CELL ' + str(cell))
 
@@ -991,18 +993,19 @@ class MainWindow(QMainWindow): #hele raam
             if self.mayavi_widget.visualization.show_trajectory==True: #change between different results if mode is result
                 self.mayavi_widget.visualization.remove_all_trajectories()
                 self.mayavi_widget.visualization.draw_trajectory(self.mayavi_widget.visualization.current_frame_number, self.mayavi_widget.visualization.current_point_index)
-        edit_box = QCheckBox('edit')
-        edit_box.toggled.connect(lambda: change_selected_point(cell))
-        self.selection_box_group.addButton(edit_box)
+        self.edit_box = QCheckBox('edit')
+        self.edit_box.toggled.connect(lambda: change_selected_point(cell))
+        self.selection_box_group.addButton(self.edit_box)
 
         show_box = QCheckBox('show')
-        show_box.toggled.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
+        # show_box.toggled.connect(lambda: self.mayavi_widget.visualization.toggle_trajectory())
 
         # amount_of_points += 1
 
         cell_options_layout.addWidget(colour_indicator)
         cell_options_layout.addWidget(cell_label)
-        cell_options_layout.addWidget(edit_box)
+        cell_options_layout.addWidget(self.edit_box)
+        cell_options_layout.addWidget(show_box)
 
         cell_options_layout.setContentsMargins(0, 0, 0, 0)
 
