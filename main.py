@@ -587,7 +587,13 @@ class MainWindow(QMainWindow): #hele raam
             while True:
                 self.change_volume_model_next()
                 yield
-        anim()
+        self.a = anim()
+    
+    def toggle_playpause(self):
+        if self.a.timer.IsRunning():
+            self.a.timer.Stop()
+        else:
+            self.a.timer.Start()
 
     def __init__(self):
         """Text.
@@ -831,20 +837,24 @@ class MainWindow(QMainWindow): #hele raam
     # FRAME NAVIGATION LAYOUT
         navigation_layout = QGridLayout()
 
-        goto_button = QPushButton('go to frame')
-        goto_button.clicked.connect(self.goto_frame)
-        navigation_layout.addWidget(goto_button, 0, 1)
-
         previous_button = QPushButton('<')
         previous_button.clicked.connect(self.change_volume_model_previous)
-        navigation_layout.addWidget(previous_button, 0, 2)
+        navigation_layout.addWidget(previous_button, 0, 0)
+
+        play_button = QPushButton('play/pause')
+        play_button.clicked.connect(self.toggle_playpause)
+        navigation_layout.addWidget(play_button, 0, 1)
 
         next_button = QPushButton('>')
         next_button.clicked.connect(self.change_volume_model_next)
-        navigation_layout.addWidget(next_button, 0, 3)
+        navigation_layout.addWidget(next_button, 0, 2)
+
+        goto_button = QPushButton('go to frame')
+        goto_button.clicked.connect(self.goto_frame)
+        navigation_layout.addWidget(goto_button, 1, 0, Qt.AlignLeft | Qt.AlignTop)
 
         self.frame_label = QLabel('frame 1/' + str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching
-        navigation_layout.addWidget(self.frame_label, 1, 3, Qt.AlignRight | Qt.AlignTop)
+        navigation_layout.addWidget(self.frame_label, 1, 2, Qt.AlignRight | Qt.AlignTop)
 
         
     # Add widgets to main layout
