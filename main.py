@@ -445,11 +445,15 @@ class Visualization(HasTraits):
         global amount_of_points
         amount_of_points = max(cell.value for cell in sheet['B'][1:])+1
         self.point_location_data = [{} for f in range(self.amount_of_frames)] #set data back to None to remove old data
+        if self.current_point_index in self.mayavi_dots:
+            self.mayavi_dots[self.current_point_index].remove()
+            del self.mayavi_dots[self.current_point_index]
         self.mayavi_dots = {}
 
         for row in sheet.values:
             if type(row[0])==int: #done to skip the first row that doesn't give data
                 self.point_location_data[row[0]][row[1]] = [row[2],row[3],row[4]]
+
         self.redraw_all_points()
     
     def load_pkl(self, pkl_dict):
@@ -468,13 +472,19 @@ class Visualization(HasTraits):
         global amount_of_points
         amount_of_points = len(pkl_dict)
         self.point_location_data = [{} for f in range(self.amount_of_frames)]
+        if self.current_point_index in self.mayavi_dots:
+            self.mayavi_dots[self.current_point_index].remove()
+            del self.mayavi_dots[self.current_point_index]
         self.mayavi_dots = {}
+
         for f in range(self.amount_of_frames):
             for p in range(amount_of_points):
                 if f in linked_centroids[p]:
                     self.point_location_data[f][p][0] = linked_centroids[p][f][0]
                     self.point_location_data[f][p][1] = linked_centroids[p][f][1]
                     self.point_location_data[f][p][2] = linked_centroids[p][f][2]
+        
+        self.redraw_all_points()
 
     def update_annot(self): # update the scalar field and visualization auto updates
         npspace = annot3D.get_npspace()
