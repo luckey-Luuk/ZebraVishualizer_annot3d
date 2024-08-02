@@ -57,11 +57,13 @@ class Visualization(HasTraits):
 
     def update_plot(self): #initializatie
         self.image_dictionary = create_image_dict(directory)
+
         self.amount_of_frames = len(self.image_dictionary)
         self.current_frame_number = 0
         self.current_point_index = 0
-        self.transparancy = 1.0
 
+        self.transparancy = 1.0
+        self.sphere_size = 10
         self.show_volume = True
         # self.show_trajectory = False
         self.show_trajectory = {}
@@ -73,21 +75,18 @@ class Visualization(HasTraits):
         self.point_location_data=[{} for f in range(self.amount_of_frames)] #information of point locations in every time step
         
         self.mayavi_trajectory_dots = [{} for f in range(self.amount_of_frames)] #for mayvi to store points for the display view
-
         self.mayavi_trajectory_lines = [{} for f in range(self.amount_of_frames)] #for mayavi to store lines for the display view
 
         self.mayavi_dots = {}#location for mayavi to store individual dots
 
-        self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie
+        self.figure = mlab.gcf(engine=self.scene.engine)#nodig voor de picker functie #maak figuur=window om dingen op te renderen?
+
 
         # global annot3D
         npimages = annot3D.get_npimages()
-
         self.x_lenght = len(npimages[0][0])
         self.y_lenght = len(npimages[0])
         self.z_lenght = len(npimages)
-
-        self.sphere_size = 10
 
         npspace = annot3D.get_npspace()
         self.npspace_sf = mlab.pipeline.scalar_field(npspace) # scalar field to update later
@@ -519,8 +518,8 @@ class MainWindow(QMainWindow): #hele raam
         super().__init__()
         
     # INIT ANNOT LOAD UP
-        self.setWindowTitle("ZebraVishualizer_annot3d")
-        self.setWindowIcon(QIcon('graphics/logo.ico'))
+        self.setWindowTitle("ZebraVishualizer")
+        self.setWindowIcon(QIcon('graphics/ZV logo.ico'))
 
         self.load_tiff_dialog()
         temp_dict = create_image_dict(directory)
