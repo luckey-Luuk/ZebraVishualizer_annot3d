@@ -861,6 +861,11 @@ class MainWindow(QMainWindow): #hele raam
         slideRightAction.setStatusTip('Slide right')
         slideRightAction.triggered.connect(self.change_volume_model_next)
 
+        playPauseAction = QAction('Play/Pause', self) #uit annot3D
+        playPauseAction.setShortcut('P')
+        playPauseAction.setStatusTip('Play/Pause animation')
+        playPauseAction.triggered.connect(self.toggle_playpause)
+
         renderAction = QAction('Render', self) #uit annot3D
         renderAction.setShortcut('R')
         renderAction.setStatusTip('Update annotation render')
@@ -868,6 +873,7 @@ class MainWindow(QMainWindow): #hele raam
 
         self.addAction(slideLeftAction)
         self.addAction(slideRightAction)
+        self.addAction(playPauseAction)
         self.addAction(renderAction)
         
     # adding menubar actions 
