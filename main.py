@@ -179,7 +179,8 @@ class Visualization(HasTraits):
         point_data_list = [] #meant to put in data from point_location_data that is not None, later used for export to excel
         for f in range(self.amount_of_frames): #for every slice number
             for p in range(amount_of_points): #for every tracking number
-                if p in self.point_location_data[f][p][0]:
+                if p in self.point_location_data[f]:
+                # if p in self.point_location_data[f][p][0]:
                     x = self.point_location_data[f][p][0]*x_mod
                     y = self.point_location_data[f][p][1]*y_mod
                     z = self.point_location_data[f][p][2]*z_mod
@@ -766,7 +767,7 @@ class MainWindow(QMainWindow): #hele raam
         goto_button.clicked.connect(self.goto_frame)
         navigation_layout.addWidget(goto_button, 1, 1)
 
-        self.frame_label = QLabel('frame 1/' + str(self.mayavi_widget.visualization.amount_of_frames-1)) #number of current frame modified when switching
+        self.frame_label = QLabel('frame 1/' + str(self.mayavi_widget.visualization.amount_of_frames)) #number of current frame modified when switching
         navigation_layout.addWidget(self.frame_label, 1, 2, Qt.AlignCenter)
 
         
@@ -977,7 +978,7 @@ class MainWindow(QMainWindow): #hele raam
 
     def update_frame_number(self): #used to change frame number display #TODO: in code toevoegen ipv eigen functie?
         frame_number = self.mayavi_widget.visualization.current_frame_number
-        text = "frame "+str(frame_number)+"/"+str(self.mayavi_widget.visualization.amount_of_frames-1)
+        text = "frame "+str(frame_number+1)+"/"+str(self.mayavi_widget.visualization.amount_of_frames)
         self.frame_label.setText(text)
 
     def goto_frame(self): #'goto' knop popup
